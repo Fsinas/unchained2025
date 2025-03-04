@@ -1,12 +1,11 @@
 # UnchainedSouls Plugin
 
-A Minecraft Bukkit plugin implementing a shadow/pet system where players can extract and evolve shadow pets from mobs.
-
+A Minecraft Paper plugin implementing a shadow/pet system where players can extract and evolve shadow pets from mobs.
+THIS IS MADE MOSTLY WITH AI, USE IT AT YOUR OWN RISK
 ## Requirements
 
 - Java 17 or higher
-- Maven
-- Bukkit/Paper server (tested on 1.21.4)
+- Paper server (tested on 1.21.4)
 
 ## Project Structure
 
