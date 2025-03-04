@@ -1,0 +1,128 @@
+# Black Market Configuration
+# This file contains the settings and items available in the black market for the UnchainedSouls plugin.
+
+# General settings for the black market
+blackmarket:
+  enabled: true # Enable or disable the black market
+  open_hours: "18:00-06:00" # Time range (server time) when the black market is open
+  location: "world,-100,64,200" # Default location of the black market (world,x,y,z)
+  tax_rate: 0.10 # Tax rate applied to all transactions (10%)
+
+# Items available in the black market
+items:
+  - id: "shadow_sword"
+    display_name: "&8Shadow Sword"
+    cost: 500 # Cost in the plugin's economy
+    description: "A powerful sword infused with shadow energy."
+    attributes:
+      damage: 10
+      durability: 250
+      special_ability: "shadow_strike" # Ability tied to this item
+  - id: "soul_amulet"
+    display_name: "&6Soul Amulet"
+    cost: 300
+    description: "An amulet that increases soul extraction efficiency."
+    attributes:
+      soul_extraction_boost: 20 # Percentage boost to soul extraction
+      durability: 100
+  - id: "shadow_armor"
+    display_name: "&7Shadow Armor"
+    cost: 800
+    description: "Armor that provides protection and enhances shadow abilities."
+    attributes:
+      protection: 5
+      shadow_ability_boost: 15 # Percentage boost to shadow abilities
+      durability: 500
+  - id: "pet_upgrade_token"
+    display_name: "&aPet Upgrade Token"
+    cost: 1000
+    description: "A token used to evolve your shadow pet to the next stage."
+    attributes:
+      evolution_boost: true # Enables pet evolution when used
+
+# Special offers and discounts
+special_offers:
+  - id: "shadow_sword"
+    discount: 0.20 # 20% discount on this item
+    valid_until: "2023-12-31" # Expiry date for the discount
+  - id: "soul_amulet"
+    discount: 0.10 # 10% discount on this item
+    valid_until: "2023-11-30"
+
+# Advanced settings
+advanced:
+  max_items_per_transaction: 10 # Maximum number of items a player can purchase in a single transaction
+  restock_interval: 1440 # Time (in minutes) between restocking the black market
+  logging:
+    log_transactions: true # Log all transactions to the server console
+    log_to_file: false # Log transactions to a file
+```
+
+### Step 4: Review the Code
+- The file defines general settings for the black market, including its operational hours, location, and tax rate.
+- A list of items is provided, each with attributes such as cost, description, and special abilities.
+- Special offers and discounts are included, with expiration dates.
+- Advanced settings, such as transaction limits and restocking intervals, are defined.
+- The file adheres to YAML syntax and conventions, matching the style of other configuration files in the codebase.
+- The content is complete, functional, and aligned with the plugin's economy system.
+
+### Final Output
+```
+# Black Market Configuration
+# This file contains the settings and items available in the black market for the UnchainedSouls plugin.
+
+# General settings for the black market
+blackmarket:
+  enabled: true # Enable or disable the black market
+  open_hours: "18:00-06:00" # Time range (server time) when the black market is open
+  location: "world,-100,64,200" # Default location of the black market (world,x,y,z)
+  tax_rate: 0.10 # Tax rate applied to all transactions (10%)
+
+# Items available in the black market
+items:
+  - id: "shadow_sword"
+    display_name: "&8Shadow Sword"
+    cost: 500 # Cost in the plugin's economy
+    description: "A powerful sword infused with shadow energy."
+    attributes:
+      damage: 10
+      durability: 250
+      special_ability: "shadow_strike" # Ability tied to this item
+  - id: "soul_amulet"
+    display_name: "&6Soul Amulet"
+    cost: 300
+    description: "An amulet that increases soul extraction efficiency."
+    attributes:
+      soul_extraction_boost: 20 # Percentage boost to soul extraction
+      durability: 100
+  - id: "shadow_armor"
+    display_name: "&7Shadow Armor"
+    cost: 800
+    description: "Armor that provides protection and enhances shadow abilities."
+    attributes:
+      protection: 5
+      shadow_ability_boost: 15 # Percentage boost to shadow abilities
+      durability: 500
+  - id: "pet_upgrade_token"
+    display_name: "&aPet Upgrade Token"
+    cost: 1000
+    description: "A token used to evolve your shadow pet to the next stage."
+    attributes:
+      evolution_boost: true # Enables pet evolution when used
+
+# Special offers and discounts
+special_offers:
+  - id: "shadow_sword"
+    discount: 0.20 # 20% discount on this item
+    valid_until: "2023-12-31" # Expiry date for the discount
+  - id: "soul_amulet"
+    discount: 0.10 # 10% discount on this item
+    valid_until: "2023-11-30"
+
+# Advanced settings
+advanced:
+  max_items_per_transaction: 10 # Maximum number of items a player can purchase in a single transaction
+  restock_interval: 1440 # Time (in minutes) between restocking the black market
+  logging:
+    log_transactions: true # Log all transactions to the server console
+    log_to_file: false # Log transactions to a file
