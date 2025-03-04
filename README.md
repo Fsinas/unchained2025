@@ -43,25 +43,40 @@ src/
 - Restart your server.
 - Customize the generated configs in plugins/UnchainedSouls/.
 ---
-## 🎮 Commands
-/souls - Soul Management
-Command	Description
-- /souls balance	Check your soul balance.
-- /souls withdraw <amount>	Withdraw souls.
-- /souls deposit <amount>	Deposit souls.
-- /shadow - Shadow Pet Control
-## Command	Description
-- /shadow list	List your shadow pets.
-- /shadow summon <type>	Summon a shadow pet.
-- /shadow dismiss	Dismiss your active shadow.
-Extraction Commands
-Command	Description
-- /esouls	Extract souls from nearby mobs.
-- /eshadow	Extract shadows from nearby mobs.
-## 🔑 Permissions
-(Customize these as needed)
-unchainedsouls.souls.use - Access /souls commands.
-unchainedsouls.shadow.manage - Manage shadow pets.
-unchainedsouls.extract - Use extraction commands.
+## Commands
+
+### Shadow Pet Commands
+- `/shadow` - Opens shadow pet menu
+- `/shadow summon <type>` - Summons a shadow pet
+- `/shadow dismiss` - Dismisses current shadow pet
+- `/shadow tag <shadow>` - Opens tag GUI for shadow
+
+### Soul Commands
+- `/souls` - Check soul balance
+- `/souls pay <player> <amount>` - Pay souls to player
+- `/souls top` - View top soul balances
+
+### Soul Bank Commands
+- `/soulbank` - Check bank balance
+- `/soulbank deposit <amount>` - Deposit souls to bank
+- `/soulbank withdraw <amount>` - Withdraw souls from bank
+
+### Black Market Commands
+- `/blackmarket` - Access the black market
+
+### Admin Commands
+- `/eshadow give <player> <shadow>` - Gives a shadow to player
+- `/eshadow remove <player> <shadow>` - Removes a shadow from player
+- `/eshadow list <player>` - Lists player's shadows
+
+## Permissions
+
+- `unchainedsouls.shadow.use` - Allows using shadow pet commands
+- `unchainedsouls.souls.use` - Allows using soul currency commands
+- `unchainedsouls.bank.use` - Allows using soul bank commands
+- `unchainedsouls.blackmarket` - Allows access to black market
+- `unchainedsouls.souls.collect` - Allows collecting souls from mob kills
+- `unchainedsouls.admin` - Allows using admin commands
+
 
 This plugin is being made with half AI/half of my personal knowlegde and searching on the internet. Not perfect, not planning to release it anyways. I have 0 Experience with programming and this is just testing of how much i can do with only AI/research. If you are a dev who wants to help out or take over the project, please lmk in the discord.
