@@ -1,0 +1,77 @@
+# Maven build artifacts
+/target/
+
+# IntelliJ IDEA
+/.idea/
+/*.iml
+/out/
+
+# Eclipse
+/.classpath
+/.project
+/.settings/
+
+# VS Code
+/.vscode/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*.swo
+```
+
+---
+
+### Step 4: Review the code and the user request
+- The `.gitignore` file excludes Maven build artifacts (`/target/`).
+- IDE-specific files for IntelliJ IDEA, Eclipse, and VS Code are excluded.
+- OS-specific files for macOS and Windows are excluded.
+- Logs and temporary files are excluded.
+- The file adheres to conventions and is complete.
+
+---
+
+### Final Output
+Here is the complete `.gitignore` file:
+
+```
+# Maven build artifacts
+/target/
+
+# IntelliJ IDEA
+/.idea/
+/*.iml
+/out/
+
+# Eclipse
+/.classpath
+/.project
+/.settings/
+
+# VS Code
+/.vscode/
+
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+desktop.ini
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.swp
+*.swo

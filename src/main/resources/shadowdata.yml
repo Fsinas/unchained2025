@@ -1,0 +1,69 @@
+# Shadow Data Configuration
+# This file contains the default settings and data structure for shadow pets in the UnchainedSouls plugin.
+
+# Shadow pet types and their attributes
+shadow_pets:
+  types:
+    shadow_wolf:
+      display_name: "Shadow Wolf"
+      health: 20
+      damage: 5
+      speed: 1.2
+      abilities:
+        - "howl_of_fear" # Causes nearby mobs to flee
+        - "shadow_dash" # Quickly dashes to a target
+    shadow_dragon:
+      display_name: "Shadow Dragon"
+      health: 50
+      damage: 15
+      speed: 0.8
+      abilities:
+        - "fire_breath" # Breathes fire, dealing area damage
+        - "wing_flap" # Knocks back nearby entities
+    shadow_phantom:
+      display_name: "Shadow Phantom"
+      health: 15
+      damage: 7
+      speed: 1.5
+      abilities:
+        - "phase_shift" # Temporarily becomes invulnerable
+        - "shadow_strike" # Deals extra damage from behind
+
+# Evolution paths for shadow pets
+evolution_paths:
+  shadow_wolf:
+    evolves_to: shadow_dragon
+    required_souls: 100
+  shadow_dragon:
+    evolves_to: shadow_phantom
+    required_souls: 200
+  shadow_phantom:
+    evolves_to: null # Final evolution stage
+
+# Default settings for shadow pets
+default_settings:
+  summon_cooldown: 60 # Cooldown time (in seconds) between summoning shadow pets
+  max_pets_per_player: 3 # Maximum number of shadow pets a player can own
+  despawn_on_logout: true # Whether shadow pets despawn when the player logs out
+
+# Abilities configuration
+abilities:
+  howl_of_fear:
+    cooldown: 30 # Cooldown time (in seconds)
+    radius: 10 # Radius (in blocks) of the effect
+  shadow_dash:
+    cooldown: 15 # Cooldown time (in seconds)
+    distance: 5 # Maximum dash distance (in blocks)
+  fire_breath:
+    cooldown: 20 # Cooldown time (in seconds)
+    damage: 10 # Damage dealt by the ability
+    range: 5 # Range (in blocks) of the fire breath
+  wing_flap:
+    cooldown: 25 # Cooldown time (in seconds)
+    knockback_strength: 2 # Strength of the knockback effect
+  phase_shift:
+    cooldown: 40 # Cooldown time (in seconds)
+    duration: 5 # Duration (in seconds) of the invulnerability
+  shadow_strike:
+    cooldown: 10 # Cooldown time (in seconds)
+    bonus_damage: 3 # Additional damage dealt when attacking from behind
