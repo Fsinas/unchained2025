@@ -1,5 +1,4 @@
 # 🌙 UnchainedSouls Plugin
-![atsisiųsti](https://github.com/user-attachments/assets/910cd738-226e-41de-9691-355d5f5ae9e7)
 ![Minecraft Version](https://img.shields.io/badge/Minecraft-1.21.4-brightgreen)  
 ![Java Version](https://img.shields.io/badge/Java-17%2B-blue)  
 ![Paper](https://img.shields.io/badge/Server-Paper-orange)  
