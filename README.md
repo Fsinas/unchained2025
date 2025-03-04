@@ -21,7 +21,8 @@ A **Minecraft Paper plugin** that unleashes a mystical shadow/pet system. Extrac
 
 ## 📋 Requirements
 - **Java**: 17 or higher  
-- **Server**: Paper (tested on 1.21.4)  
+- **Server**: Paper (tested on 1.21.4)
+- PacketEvents <3
 
 ---
 
