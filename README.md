@@ -1,56 +1,66 @@
-# UnchainedSouls Plugin
+# 🌙 UnchainedSouls Plugin
 
-A Minecraft Paper plugin implementing a shadow/pet system where players can extract and evolve shadow pets from mobs.
-THIS IS MADE MOSTLY WITH AI, USE IT AT YOUR OWN RISK
-## Requirements
+![Minecraft Version](https://img.shields.io/badge/Minecraft-1.21.4-brightgreen)  
+![Java Version](https://img.shields.io/badge/Java-17%2B-blue)  
+![Paper](https://img.shields.io/badge/Server-Paper-orange)  
+![License](https://img.shields.io/badge/License-Use%20At%20Your%20Own%20Risk-red)
 
-- Java 17 or higher
-- Paper server (tested on 1.21.4)
+A **Minecraft Paper plugin** that unleashes a mystical shadow/pet system. Extract souls, evolve shadow pets, and dominate with your dark companions!
 
-## Project Structure
+> ⚠️ *Crafted with AI assistance—proceed with caution!*
 
-```
+---
+
+## ✨ Features
+- **Soul Extraction**: Harvest souls and shadows from mobs.  
+- **Shadow Pets**: Summon, evolve, and dismiss your shadowy allies.  
+- **Soul Economy**: Manage your soul currency with ease.  
+- **Black Market**: Mysterious trades await (WIP).  
+
+---
+
+## 📋 Requirements
+- **Java**: 17 or higher  
+- **Server**: Paper (tested on 1.21.4)  
+
+---
+
+## 🗂 Project Structure
+```plaintext
 src/
 ├── main/
 │   ├── java/me/unchainedsouls/unchainedSoulsBeta/
-│   │   └── SoulsPlugin.java
+│   │   └── SoulsPlugin.java       # Core plugin logic
 │   └── resources/
-│       ├── plugin.yml
-│       ├── config.yml
-│       ├── shadowdata.yml
-│       └── blackmarket.yml
-```
+│       ├── plugin.yml             # Plugin metadata
+│       ├── config.yml             # General settings
+│       ├── shadowdata.yml         # Shadow pet data
+│       └── blackmarket.yml        # Black market config
 
-## Building
+🚀 Installation
+Drop unchainedSoulsBeta-1.0-SNAPSHOT.jar into your plugins folder.
+Restart your server.
+Customize the generated configs in plugins/UnchainedSouls/.
 
-1. Clone this repository
-2. Run `mvn clean package`
-3. The compiled plugin will be in `target/unchainedSoulsBeta-1.0-SNAPSHOT.jar`
+🎮 Commands
+/souls - Soul Management
+Command	Description
+/souls balance	Check your soul balance.
+/souls withdraw <amount>	Withdraw souls.
+/souls deposit <amount>	Deposit souls.
+/shadow - Shadow Pet Control
+Command	Description
+/shadow list	List your shadow pets.
+/shadow summon <type>	Summon a shadow pet.
+/shadow dismiss	Dismiss your active shadow.
+Extraction Commands
+Command	Description
+/esouls	Extract souls from nearby mobs.
+/eshadow	Extract shadows from nearby mobs.
+🔑 Permissions
+(Customize these as needed)
+unchainedsouls.souls.use - Access /souls commands.
+unchainedsouls.shadow.manage - Manage shadow pets.
+unchainedsouls.extract - Use extraction commands.
 
-## Installation
-
-1. Copy the compiled JAR file from `target/unchainedSoulsBeta-1.0-SNAPSHOT.jar` to your server's `plugins` folder
-2. Restart your server
-3. The plugin will generate default configuration files in `plugins/UnchainedSouls/`
-
-## Commands
-
-- `/souls` - Manage your souls
-  - `/souls balance` - Check your soul balance
-  - `/souls withdraw <amount>` - Withdraw souls
-  - `/souls deposit <amount>` - Deposit souls
-
-- `/shadow` - Manage your shadow pets
-  - `/shadow list` - Show your shadows
-  - `/shadow summon <type>` - Summon a shadow
-  - `/shadow dismiss` - Dismiss current shadow
-
-- `/esouls` - Extract souls from nearby mobs
-- `/eshadow` - Extract shadow from nearby mobs
-
-## Permissions
-
-- `unchainedsouls.souls` - Access to soul-related commands
-- `unchainedsouls.shadow` - Access to shadow-related commands
-- `unchainedsouls.extract.souls` - Ability to extract souls
-- `unchainedsouls.extract.shadow` - Ability to extract shadows
+This plugin is being made with half AI/half of my personal knowlegde and searching on the internet. Not perfect, not planning to release it anyways. I have 0 Experience with programming and this is just testing of how much i can do with only AI/research. If you are a dev who wants to help out or take over the project, please lmk in the discord.
