@@ -1,89 +1,39 @@
 name: UnchainedSouls
 version: 1.0-SNAPSHOT
 main: me.unchainedsouls.unchainedSoulsBeta.SoulsPlugin
-api-version: 1.21
+api-version: '1.21'
+author: Fsin
+description: A shadow/pet system plugin where players can extract, evolve, and customize shadow pets from mobs.
+website: https://github.com/Fsinas/unchained2025
 
 commands:
   souls:
-    description: Manage your souls.
-    usage: /<command> [balance|withdraw|deposit]
-    aliases: [soul]
-    permission: unchainedsouls.souls
+    description: Manage your soul balance
+    usage: /<command> [balance|withdraw|deposit] [amount]
+    permission: unchainedsouls.souls.use
   shadow:
-    description: Manage your shadow pets.
-    usage: /<command> [list|summon|dismiss]
-    aliases: [shadows]
-    permission: unchainedsouls.shadow
-  esouls:
-    description: Extract souls from nearby mobs.
+    description: Manage your shadow pets
+    usage: /<command> [summon|dismiss|customize|rename|tags] [args]
+    permission: unchainedsouls.shadow.manage
+  blackmarket:
+    description: Open the black market
     usage: /<command>
-    permission: unchainedsouls.extract.souls
-  eshadow:
-    description: Extract shadow from nearby mobs.
-    usage: /<command>
-    permission: unchainedsouls.extract.shadow
+    permission: unchainedsouls.blackmarket
+  soulsadmin:
+    description: Admin commands for soul management
+    usage: /<command> <give|take|set> <player> <amount>
+    permission: unchainedsouls.admin
 
 permissions:
-  unchainedsouls.souls:
-    description: Access to soul-related commands.
+  unchainedsouls.souls.use:
+    description: Allows use of soul management commands
     default: true
-  unchainedsouls.shadow:
-    description: Access to shadow-related commands.
+  unchainedsouls.shadow.manage:
+    description: Allows management of shadow pets
     default: true
-  unchainedsouls.extract.souls:
-    description: Ability to extract souls.
-    default: op
-  unchainedsouls.extract.shadow:
-    description: Ability to extract shadows.
-    default: op
-```
-
-### Step 4: Review the Code
-- The `plugin.yml` file includes all required metadata for the plugin.
-- The `name`, `version`, and `main` fields are correctly defined.
-- The `api-version` is set to `1.21`, matching the Paper server version mentioned in the README.
-- Commands and permissions are fully defined, matching the functionality described in the README.
-- The file adheres to YAML syntax and conventions.
-
-### Final Output
-The complete content of the `plugin.yml` file is provided below:
-
-```
-name: UnchainedSouls
-version: 1.0-SNAPSHOT
-main: me.unchainedsouls.unchainedSoulsBeta.SoulsPlugin
-api-version: 1.21
-
-commands:
-  souls:
-    description: Manage your souls.
-    usage: /<command> [balance|withdraw|deposit]
-    aliases: [soul]
-    permission: unchainedsouls.souls
-  shadow:
-    description: Manage your shadow pets.
-    usage: /<command> [list|summon|dismiss]
-    aliases: [shadows]
-    permission: unchainedsouls.shadow
-  esouls:
-    description: Extract souls from nearby mobs.
-    usage: /<command>
-    permission: unchainedsouls.extract.souls
-  eshadow:
-    description: Extract shadow from nearby mobs.
-    usage: /<command>
-    permission: unchainedsouls.extract.shadow
-
-permissions:
-  unchainedsouls.souls:
-    description: Access to soul-related commands.
+  unchainedsouls.blackmarket:
+    description: Allows access to the black market
     default: true
-  unchainedsouls.shadow:
-    description: Access to shadow-related commands.
-    default: true
-  unchainedsouls.extract.souls:
-    description: Ability to extract souls.
-    default: op
-  unchainedsouls.extract.shadow:
-    description: Ability to extract shadows.
+  unchainedsouls.admin:
+    description: Grants admin privileges for soul management
     default: op
