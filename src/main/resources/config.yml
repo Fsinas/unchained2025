@@ -1,108 +1,63 @@
-# UnchainedSouls Plugin Configuration
-# This file contains the default configuration settings for the UnchainedSouls plugin.
+# UnchainedSouls Configuration File
 
-# General plugin settings
-general:
-  debug: false # Enable or disable debug mode
-  language: en # Default language for messages
+# Soul drop amounts when killing entities
+soul_drops:
+  ZOMBIE: 5
+  SKELETON: 3
+  CREEPER: 10
+  SPIDER: 4
+  PLAYER: 50
+  # Add more entity types as needed
 
-# Shadow pet system settings
-shadow_pets:
-  max_pets_per_player: 3 # Maximum number of shadow pets a player can own
-  summon_cooldown: 60 # Cooldown time (in seconds) between summoning shadow pets
-  default_pet_type: "shadow_wolf" # Default shadow pet type for new players
-  evolution:
-    enabled: true # Enable or disable shadow pet evolution
-    required_souls: 100 # Number of souls required for a pet to evolve
+# Costs for upgrading shadow stats
+upgrade_costs:
+  health: 50   # Cost in souls to upgrade health
+  damage: 75   # Cost in souls to upgrade damage
+  speed: 40    # Cost in souls to upgrade speed
 
-# Economy settings
-economy:
-  starting_balance: 100 # Default starting balance for new players
-  soul_value: 10 # Value of one soul in the plugin's economy
-  shadow_value: 20 # Value of one shadow in the plugin's economy
+# Evolution thresholds for shadows
+evolution:
+  threshold_1: 50   # Kills needed for first evolution
+  threshold_2: 100  # Kills needed for second evolution
 
-# Extraction settings
-extraction:
-  soul_extraction_radius: 10 # Radius (in blocks) for extracting souls from mobs
-  shadow_extraction_radius: 5 # Radius (in blocks) for extracting shadows from mobs
-  extraction_cooldown: 30 # Cooldown time (in seconds) between extractions
+# Particle effect settings
+particles:
+  update_interval: 5   # Ticks between particle updates (1 tick = 1/20 sec)
+  extraction_timeout: 2400  # Ticks before extraction expires (120 seconds)
 
-# Logging settings
-logging:
-  log_to_console: true # Log plugin events to the server console
-  log_to_file: false # Log plugin events to a file
+# Customization options for shadows
+customization:
+  particle_effects:
+    flames:
+      name: "Flames"
+      description: "Fiery particles surround your shadow"
+      cost: 100
+    smoke:
+      name: "Smoke"
+      description: "A dark, smoky aura"
+      cost: 75
+  titles:
+    elite:
+      name: "Elite"
+      description: "Marks your shadow as a superior being"
+      cost: 150
+    guardian:
+      name: "Guardian"
+      description: "A protector’s title"
+      cost: 120
+  tags:
+    warrior:
+      name: "Warrior"
+      description: "A fierce combatant"
+      cost: 100
+    void:
+      name: "Void"
+      description: "Touched by darkness"
+      cost: 150
+    phantom:
+      name: "Phantom"
+      description: "A ghostly presence"
+      cost: 200
 
-# Messages
-messages:
-  prefix: "&7[&6UnchainedSouls&7] " # Prefix for all plugin messages
-  no_permission: "&cYou do not have permission to use this command."
-  invalid_command: "&cInvalid command. Use /help for a list of commands."
-  pet_summoned: "&aYour shadow pet has been summoned!"
-  pet_dismissed: "&aYour shadow pet has been dismissed."
-  souls_extracted: "&aYou have extracted &e{amount} &asouls!"
-  shadows_extracted: "&aYou have extracted &e{amount} &ashadows!"
-
-# Advanced settings
-advanced:
-  auto_save_interval: 300 # Interval (in seconds) for automatically saving player data
-  max_threads: 4 # Maximum number of threads the plugin can use
-```
-
-### Step 4: Review the Code
-- The file includes all necessary configuration options for the plugin, such as general settings, shadow pet system settings, economy settings, extraction settings, logging settings, and messages.
-- Default values are meaningful and align with the plugin's functionality as described in the README and `plugin.yml`.
-- The file adheres to YAML syntax and conventions.
-- The configuration is complete and functional, with no placeholders or TODOs.
-
-### Final Output
-The complete content of the `config.yml` file is provided below:
-
-```
-# UnchainedSouls Plugin Configuration
-# This file contains the default configuration settings for the UnchainedSouls plugin.
-
-# General plugin settings
-general:
-  debug: false # Enable or disable debug mode
-  language: en # Default language for messages
-
-# Shadow pet system settings
-shadow_pets:
-  max_pets_per_player: 3 # Maximum number of shadow pets a player can own
-  summon_cooldown: 60 # Cooldown time (in seconds) between summoning shadow pets
-  default_pet_type: "shadow_wolf" # Default shadow pet type for new players
-  evolution:
-    enabled: true # Enable or disable shadow pet evolution
-    required_souls: 100 # Number of souls required for a pet to evolve
-
-# Economy settings
-economy:
-  starting_balance: 100 # Default starting balance for new players
-  soul_value: 10 # Value of one soul in the plugin's economy
-  shadow_value: 20 # Value of one shadow in the plugin's economy
-
-# Extraction settings
-extraction:
-  soul_extraction_radius: 10 # Radius (in blocks) for extracting souls from mobs
-  shadow_extraction_radius: 5 # Radius (in blocks) for extracting shadows from mobs
-  extraction_cooldown: 30 # Cooldown time (in seconds) between extractions
-
-# Logging settings
-logging:
-  log_to_console: true # Log plugin events to the server console
-  log_to_file: false # Log plugin events to a file
-
-# Messages
-messages:
-  prefix: "&7[&6UnchainedSouls&7] " # Prefix for all plugin messages
-  no_permission: "&cYou do not have permission to use this command."
-  invalid_command: "&cInvalid command. Use /help for a list of commands."
-  pet_summoned: "&aYour shadow pet has been summoned!"
-  pet_dismissed: "&aYour shadow pet has been dismissed."
-  souls_extracted: "&aYou have extracted &e{amount} &asouls!"
-  shadows_extracted: "&aYou have extracted &e{amount} &ashadows!"
-
-# Advanced settings
-advanced:
-  auto_save_interval: 300 # Interval (in seconds) for automatically saving player data
-  max_threads: 4 # Maximum number of threads the plugin can use
+# Player soul storage (do not edit manually)
+souls: {}
