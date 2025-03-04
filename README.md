@@ -36,28 +36,28 @@ src/
 │       ├── config.yml             # General settings
 │       ├── shadowdata.yml         # Shadow pet data
 │       └── blackmarket.yml        # Black market config
-
-🚀 Installation
-Drop unchainedSoulsBeta-1.0-SNAPSHOT.jar into your plugins folder.
-Restart your server.
-Customize the generated configs in plugins/UnchainedSouls/.
-
-🎮 Commands
+```
+## 🚀 Installation
+- Drop unchainedSoulsBeta-1.0-SNAPSHOT.jar into your plugins folder.
+- Restart your server.
+- Customize the generated configs in plugins/UnchainedSouls/.
+---
+## 🎮 Commands
 /souls - Soul Management
 Command	Description
-/souls balance	Check your soul balance.
-/souls withdraw <amount>	Withdraw souls.
-/souls deposit <amount>	Deposit souls.
-/shadow - Shadow Pet Control
-Command	Description
-/shadow list	List your shadow pets.
-/shadow summon <type>	Summon a shadow pet.
-/shadow dismiss	Dismiss your active shadow.
+- /souls balance	Check your soul balance.
+- /souls withdraw <amount>	Withdraw souls.
+- /souls deposit <amount>	Deposit souls.
+- /shadow - Shadow Pet Control
+## Command	Description
+- /shadow list	List your shadow pets.
+- /shadow summon <type>	Summon a shadow pet.
+- /shadow dismiss	Dismiss your active shadow.
 Extraction Commands
 Command	Description
-/esouls	Extract souls from nearby mobs.
-/eshadow	Extract shadows from nearby mobs.
-🔑 Permissions
+- /esouls	Extract souls from nearby mobs.
+- /eshadow	Extract shadows from nearby mobs.
+## 🔑 Permissions
 (Customize these as needed)
 unchainedsouls.souls.use - Access /souls commands.
 unchainedsouls.shadow.manage - Manage shadow pets.
