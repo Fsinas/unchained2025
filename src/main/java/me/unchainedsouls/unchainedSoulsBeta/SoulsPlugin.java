@@ -1,43 +1,41 @@
 package me.unchainedsouls.unchainedSoulsBeta;
 
+import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
+import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.*;
-import org.bukkit.attribute.Attribute;
 import org.bukkit.command.*;
 import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.*;
 import org.bukkit.entity.*;
 import org.bukkit.event.*;
-import org.bukkit.event.entity.EntityDamageByEntityEvent;
-import org.bukkit.event.entity.EntityDamageEvent;
-import org.bukkit.event.entity.EntityDeathEvent;
-import org.bukkit.event.inventory.ClickType;
 import org.bukkit.event.inventory.InventoryClickEvent;
-import org.bukkit.event.player.PlayerInteractEvent;
-import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.inventory.*;
-import org.bukkit.plugin.java.*;
-import org.bukkit.configuration.file.*;
 import org.bukkit.inventory.meta.*;
-import org.bukkit.metadata.FixedMetadataValue;
-import org.bukkit.potion.PotionEffect;
-import org.bukkit.potion.PotionEffectType;
+import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.scheduler.BukkitRunnable;
-import org.bukkit.util.Vector;
 
 import java.io.File;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 import java.util.logging.Level;
-import org.bukkit.persistence.PersistentDataType;
-import org.bukkit.persistence.PersistentDataContainer;
-import org.bukkit.NamespacedKey;
 
+/**
+ * Main plugin class for UnchainedSouls, implementing a shadow/pet system with MiniMessage support and black market.
+ * Compatible with Paper 1.21.4.
+ */
 public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor {
-    // GUI Constants
-    private static final String GUI_TITLE_CUSTOMIZATION = ChatColor.DARK_PURPLE + "Shadow Customization";
-    private static final String GUI_TITLE_PARTICLES = ChatColor.DARK_PURPLE + "Particle Effects"; 
-    private static final String GUI_TITLE_TITLES = ChatColor.DARK_PURPLE + "Shadow Titles";
 
+    // MiniMessage instance for text formatting
+    private static final MiniMessage MINI_MESSAGE = MiniMessage.miniMessage();
+
+    // GUI Constants
+    private static final String GUI_TITLE_CUSTOMIZATION = "<dark_purple>Shadow Customization";
+    private static final String GUI_TITLE_PARTICLES = "<dark_purple>Particle Effects";
+    private static final String GUI_TITLE_TITLES = "<dark_purple>Shadow Titles";
+    private static final String BLACK_MARKET_TITLE = "<dark_purple>Black Market";
+
+    // Shadow pet data structure
     private static class Shadow {
         EntityType type;
         int kills;
@@ -48,12 +46,10 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
         double speed = 1.0;
         String evolutionPath;
         int evolutionPoints;
+        String customName = "";
+        String title = "";
+        String particleEffect = "";
         Map<String, Integer> unlockedAbilities = new HashMap<>();
-
-        // Customization fields
-        String customName;
-        String title;
-        String particleEffect;
         Map<String, Boolean> unlockedCustomizations = new HashMap<>();
 
         Shadow(EntityType type) {
@@ -62,21 +58,17 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
             this.evolutionLevel = "Basic";
             this.evolutionPath = "";
             this.evolutionPoints = 0;
-            this.customName = "";
-            this.title = "";
-            this.particleEffect = "";
         }
     }
 
-    // Configuration and data storage
+    // Data storage
     private FileConfiguration blackMarketConfig;
     private final Map<UUID, Map<EntityType, Shadow>> playerShadows = new ConcurrentHashMap<>();
-    private final Map<UUID, EntityType> extractableMobs = new ConcurrentHashMap<>();
     private final Map<UUID, Entity> activePets = new ConcurrentHashMap<>();
     private final Set<BukkitRunnable> activeParticleTasks = Collections.synchronizedSet(new HashSet<>());
     private final Random random = new Random();
 
-    // Constants from config.yml
+    // Config constants
     private int healthUpgradeCost;
     private int damageUpgradeCost;
     private int speedUpgradeCost;
@@ -85,19 +77,16 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
     private long particleUpdateTicks;
     private int extractionTimeout;
 
-    private final String BLACK_MARKET_TITLE = ChatColor.DARK_PURPLE + "Black Market";
-    private static final String DARK_GRIMOIRE_ID = "dark_grimoire";
-    private NamespacedKey grimoireKey;
+    // Lifecycle Methods
 
     @Override
     public void onEnable() {
         try {
-            grimoireKey = new NamespacedKey(this, DARK_GRIMOIRE_ID);
             loadConfigurations();
             registerCommands();
             getServer().getPluginManager().registerEvents(this, this);
             startCleanupTask();
-            getLogger().info("SoulsPlugin enabled successfully!");
+            getLogger().info("SoulsPlugin enabled successfully on Paper 1.21.4!");
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "Failed to enable SoulsPlugin", e);
             getServer().getPluginManager().disablePlugin(this);
@@ -117,24 +106,18 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
         }
     }
 
+    // Configuration Management
+
+    /** Loads all configuration files and initializes constants. */
     private void loadConfigurations() {
         try {
-            // Save default config.yml
             saveDefaultConfig();
+            if (!getDataFolder().exists()) getDataFolder().mkdirs();
 
-            // Ensure plugin directory exists
-            if (!getDataFolder().exists()) {
-                getDataFolder().mkdirs();
-            }
-
-            // Handle blackmarket.yml
             File blackmarketFile = new File(getDataFolder(), "blackmarket.yml");
-            if (!blackmarketFile.exists()) {
-                saveResource("blackmarket.yml", false);
-            }
+            if (!blackmarketFile.exists()) saveResource("blackmarket.yml", false);
             blackMarketConfig = YamlConfiguration.loadConfiguration(blackmarketFile);
 
-            // Load constants from config
             healthUpgradeCost = getConfig().getInt("upgrade_costs.health", 50);
             damageUpgradeCost = getConfig().getInt("upgrade_costs.damage", 75);
             speedUpgradeCost = getConfig().getInt("upgrade_costs.speed", 40);
@@ -144,546 +127,28 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
             extractionTimeout = getConfig().getInt("particles.extraction_timeout", 2400);
 
             loadShadowData();
-
-            getLogger().info("Successfully loaded all configuration files");
+            getLogger().info("Configurations loaded successfully!");
         } catch (Exception e) {
-            getLogger().severe("Failed to load configurations: " + e.getMessage());
-            e.printStackTrace();
+            getLogger().log(Level.SEVERE, "Failed to load configurations", e);
         }
     }
 
+    /** Registers plugin commands. */
     private void registerCommands() {
-        getCommand("souls").setExecutor(this);
-        getCommand("shadow").setExecutor(this);
-        getCommand("blackmarket").setExecutor(this);
-        getCommand("soulsadmin").setExecutor(this);
+        Objects.requireNonNull(getCommand("souls")).setExecutor(this);
+        Objects.requireNonNull(getCommand("shadow")).setExecutor(this);
+        Objects.requireNonNull(getCommand("blackmarket")).setExecutor(this);
+        Objects.requireNonNull(getCommand("soulsadmin")).setExecutor(this);
     }
 
-    private void handleSetEffect(Player admin, String targetName, String typeStr, String effectKey) {
-        Player target = Bukkit.getPlayer(targetName);
-        if (target == null) {
-            admin.sendMessage(ChatColor.RED + "Player not found!");
-            return;
-        }
-
-        try {
-            EntityType type = EntityType.valueOf(typeStr.toUpperCase());
-            Shadow shadow = playerShadows.get(target.getUniqueId()).get(type);
-            
-            if (shadow == null) {
-                admin.sendMessage(ChatColor.RED + "Target player doesn't have this shadow type!");
-                return;
-            }
-
-            ConfigurationSection effects = getConfig().getConfigurationSection("customization.particle_effects");
-            if (effects != null && effects.contains(effectKey)) {
-                shadow.particleEffect = effectKey;
-                shadow.unlockedCustomizations.put("particle_" + effectKey, true);
-                
-                admin.sendMessage(ChatColor.GREEN + "Successfully set " + effectKey + " effect for " + 
-                                target.getName() + "'s " + type.name() + " shadow!");
-                target.sendMessage(ChatColor.GREEN + "An admin has given you the " + effectKey + " effect for your " + 
-                                 type.name() + " shadow!");
-                
-                saveShadowData();
-            } else {
-                admin.sendMessage(ChatColor.RED + "Invalid effect key!");
-            }
-        } catch (IllegalArgumentException e) {
-            admin.sendMessage(ChatColor.RED + "Invalid shadow type!");
-        }
-    }
-
-    private void handleSetTitle(Player admin, String targetName, String typeStr, String titleKey) {
-        Player target = Bukkit.getPlayer(targetName);
-        if (target == null) {
-            admin.sendMessage(ChatColor.RED + "Player not found!");
-            return;
-        }
-
-        try {
-            EntityType type = EntityType.valueOf(typeStr.toUpperCase());
-            Shadow shadow = playerShadows.get(target.getUniqueId()).get(type);
-            
-            if (shadow == null) {
-                admin.sendMessage(ChatColor.RED + "Target player doesn't have this shadow type!");
-                return;
-            }
-
-            ConfigurationSection titles = getConfig().getConfigurationSection("customization.titles");
-            if (titles != null && titles.contains(titleKey)) {
-                String titleName = titles.getString(titleKey + ".name");
-                shadow.title = titleName;
-                shadow.unlockedCustomizations.put("title_" + titleKey, true);
-                
-                admin.sendMessage(ChatColor.GREEN + "Successfully set " + titleName + " title for " + 
-                                target.getName() + "'s " + type.name() + " shadow!");
-                target.sendMessage(ChatColor.GREEN + "An admin has given you the " + titleName + " title for your " + 
-                                 type.name() + " shadow!");
-                
-                // Update active pet's name if it exists
-                if (shadow.activePet != null && shadow.activePet.isValid()) {
-                    updateShadowDisplayName(shadow);
-                }
-                
-                saveShadowData();
-            } else {
-                admin.sendMessage(ChatColor.RED + "Invalid title key!");
-            }
-        } catch (IllegalArgumentException e) {
-            admin.sendMessage(ChatColor.RED + "Invalid shadow type!");
-        }
-    }
-
-    private void updateShadowDisplayName(Shadow shadow) {
-        if (shadow.activePet == null || !shadow.activePet.isValid()) return;
-        
-        String displayName = "";
-        if (!shadow.title.isEmpty()) {
-            displayName += ChatColor.GOLD + "[" + shadow.title + "] ";
-        }
-        
-        if (!shadow.customName.isEmpty()) {
-            displayName += shadow.customName;
-        } else {
-            displayName += ChatColor.GRAY + shadow.type.name() + " Shadow";
-        }
-        
-        shadow.activePet.setCustomName(displayName);
-        shadow.activePet.setCustomNameVisible(true);
-    }
-
-    private EntityType getCurrentShadowType(Player player) {
-        Entity activePet = activePets.get(player.getUniqueId());
-        if (activePet != null) {
-            return activePet.getType();
-        }
-        return null;
-    }
-
-    private void openParticleEffectsGUI(Player player, EntityType shadowType) {
-        if (shadowType == null) {
-            player.sendMessage(ChatColor.RED + "You must have an active shadow to modify its effects!");
-            return;
-        }
-
-        Inventory gui = Bukkit.createInventory(null, 27, GUI_TITLE_PARTICLES);
-
-        ConfigurationSection effects = getConfig().getConfigurationSection("customization.particle_effects");
-        if (effects != null) {
-            int slot = 10;
-            for (String effectKey : effects.getKeys(false)) {
-                ConfigurationSection effect = effects.getConfigurationSection(effectKey);
-                if (effect == null) continue;
-
-                String name = effect.getString("name");
-                String description = effect.getString("description");
-                int cost = effect.getInt("cost");
-
-                Shadow shadow = playerShadows.get(player.getUniqueId()).get(shadowType);
-                boolean unlocked = shadow != null && shadow.unlockedCustomizations.getOrDefault("particle_" + effectKey, false);
-
-                List<String> lore = Arrays.asList(
-                    ChatColor.GRAY + description,
-                    "",
-                    ChatColor.YELLOW + "Cost: " + cost + " souls",
-                    "",
-                    unlocked ? ChatColor.GREEN + "UNLOCKED" : ChatColor.RED + "LOCKED"
-                );
-
-                ItemStack effectItem = createGuiItem(Material.BLAZE_POWDER, ChatColor.GOLD + name, lore.toArray(new String[0]));
-                gui.setItem(slot++, effectItem);
-            }
-        }
-
-        gui.setItem(18, createGuiItem(Material.ARROW, ChatColor.YELLOW + "Back"));
-        gui.setItem(22, createGuiItem(Material.BARRIER, ChatColor.RED + "Close"));
-
-        player.openInventory(gui);
-    }
-
-    private void openTitlesGUI(Player player, EntityType shadowType) {
-        if (shadowType == null) {
-            player.sendMessage(ChatColor.RED + "You must have an active shadow to modify its title!");
-            return;
-        }
-
-        Inventory gui = Bukkit.createInventory(null, 27, GUI_TITLE_TITLES);
-
-        ConfigurationSection titles = getConfig().getConfigurationSection("customization.titles");
-        if (titles != null) {
-            int slot = 10;
-            for (String titleKey : titles.getKeys(false)) {
-                ConfigurationSection title = titles.getConfigurationSection(titleKey);
-                if (title == null) continue;
-
-                String name = title.getString("name");
-                String description = title.getString("description");
-                int cost = title.getInt("cost");
-
-                Shadow shadow = playerShadows.get(player.getUniqueId()).get(shadowType);
-                boolean unlocked = shadow != null && shadow.unlockedCustomizations.getOrDefault("title_" + titleKey, false);
-
-                List<String> lore = Arrays.asList(
-                    ChatColor.GRAY + description,
-                    "",
-                    ChatColor.YELLOW + "Cost: " + cost + " souls",
-                    "",
-                    unlocked ? ChatColor.GREEN + "UNLOCKED" : ChatColor.RED + "LOCKED"
-                );
-
-                ItemStack titleItem = createGuiItem(Material.NAME_TAG, ChatColor.GOLD + name, lore.toArray(new String[0]));
-                gui.setItem(slot++, titleItem);
-            }
-        }
-
-        gui.setItem(18, createGuiItem(Material.ARROW, ChatColor.YELLOW + "Back"));
-        gui.setItem(22, createGuiItem(Material.BARRIER, ChatColor.RED + "Close"));
-
-        player.openInventory(gui);
-    }
-
-    private void handleCustomizationGuiClick(Player player, InventoryClickEvent event) {
-        ItemStack clicked = event.getCurrentItem();
-        if (clicked == null) return;
-
-        String title = event.getView().getTitle();
-        if (clicked.getType() == Material.BARRIER) {
-            player.closeInventory();
-            return;
-        }
-
-        EntityType shadowType = getCurrentShadowType(player);
-        if (shadowType == null && !title.equals(GUI_TITLE_CUSTOMIZATION)) {
-            player.sendMessage(ChatColor.RED + "You must have an active shadow to customize it!");
-            return;
-        }
-
-        if (title.equals(GUI_TITLE_CUSTOMIZATION)) {
-            switch (clicked.getType()) {
-                case BLAZE_POWDER -> openParticleEffectsGUI(player, shadowType);
-                case NAME_TAG -> openTitlesGUI(player, shadowType);
-            }
-        } else if (title.equals(GUI_TITLE_PARTICLES)) {
-            handleParticleEffectSelection(player, clicked);
-        } else if (title.equals(GUI_TITLE_TITLES)) {
-            handleTitleSelection(player, clicked);
-        }
-    }
-
-    private void handleParticleEffectSelection(Player player, ItemStack clicked) {
-        if (!clicked.hasItemMeta() || !clicked.getItemMeta().hasDisplayName()) return;
-
-        String effectName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
-        EntityType shadowType = getCurrentShadowType(player);
-        if (shadowType == null) {
-            player.sendMessage(ChatColor.RED + "You must have an active shadow to modify its particle effects!");
-            return;
-        }
-
-        Shadow shadow = playerShadows.get(player.getUniqueId()).get(shadowType);
-        if (shadow == null) return;
-
-        ConfigurationSection effects = getConfig().getConfigurationSection("customization.particle_effects");
-        if (effects != null) {
-            for (String effectKey : effects.getKeys(false)) {
-                ConfigurationSection effect = effects.getConfigurationSection(effectKey);
-                if (effect != null && effectName.equals(effect.getString("name"))) {
-                    int cost = effect.getInt("cost");
-                    if (shadow.unlockedCustomizations.getOrDefault("particle_" + effectKey, false)) {
-                        shadow.particleEffect = effectKey;
-                        player.sendMessage(ChatColor.GREEN + "Particle effect applied!");
-                    } else if (getSouls(player) >= cost) {
-                        setSouls(player, getSouls(player) - cost);
-                        shadow.unlockedCustomizations.put("particle_" + effectKey, true);
-                        shadow.particleEffect = effectKey;
-                        player.sendMessage(ChatColor.GREEN + "Particle effect purchased and applied!");
-                    } else {
-                        player.sendMessage(ChatColor.RED + "Not enough souls! Need " + cost + " souls.");
-                    }
-                    break;
-                }
-            }
-        }
-    }
-
-    private void handleTitleSelection(Player player, ItemStack clicked) {
-        if (!clicked.hasItemMeta() || !clicked.getItemMeta().hasDisplayName()) return;
-
-        String titleName = ChatColor.stripColor(clicked.getItemMeta().getDisplayName());
-        EntityType shadowType = getCurrentShadowType(player);
-        if (shadowType == null) {
-            player.sendMessage(ChatColor.RED + "You must have an active shadow to modify its title!");
-            return;
-        }
-
-        Shadow shadow = playerShadows.get(player.getUniqueId()).get(shadowType);
-        if (shadow == null) return;
-
-        ConfigurationSection titles = getConfig().getConfigurationSection("customization.titles");
-        if (titles != null) {
-            for (String titleKey : titles.getKeys(false)) {
-                ConfigurationSection title = titles.getConfigurationSection(titleKey);
-                if (title != null && titleName.equals(title.getString("name"))) {
-                    int cost = title.getInt("cost");
-                    if (shadow.unlockedCustomizations.getOrDefault("title_" + titleKey, false)) {
-                        shadow.title = titleName;
-                        updateShadowDisplayName(shadow);
-                        player.sendMessage(ChatColor.GREEN + "Title applied!");
-                    } else if (getSouls(player) >= cost) {
-                        setSouls(player, getSouls(player) - cost);
-                        shadow.unlockedCustomizations.put("title_" + titleKey, true);
-                        shadow.title = titleName;
-                        updateShadowDisplayName(shadow);
-                        player.sendMessage(ChatColor.GREEN + "Title purchased and applied!");
-                    } else {
-                        player.sendMessage(ChatColor.RED + "Not enough souls! Need " + cost + " souls.");
-                    }
-                    break;
-                }
-            }
-        }
-    }
-
-    private void handleShadowCommand(Player player, String[] args) {
-        if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
-            showShadowHelp(player);
-            return;
-        }
-
-        String subCommand = args[0].toLowerCase();
-
-        switch (subCommand) {
-            case "customize" -> openCustomizationGUI(player);
-            case "rename" -> {
-                if (args.length < 3) {
-                    player.sendMessage(ChatColor.RED + "Usage: /shadow rename <type> <name>");
-                    return;
-                }
-                handleShadowRename(player, args[1], args[2]);
-            }
-            default -> showShadowHelp(player);
-        }
-    }
-
-    private void showShadowHelp(Player player) {
-        player.sendMessage(ChatColor.GOLD + "=== Shadow Commands ===");
-        player.sendMessage(ChatColor.GOLD + "/shadow customize " + ChatColor.WHITE + "- Open customization menu");
-        player.sendMessage(ChatColor.GOLD + "/shadow rename <type> <name> " + ChatColor.WHITE + "- Rename your shadow");
-    }
-
-    private void saveShadowData() {
-        try {
-            File shadowDataFile = new File(getDataFolder(), "shadowdata.yml");
-            if (!shadowDataFile.exists()) {
-                shadowDataFile.createNewFile();
-            }
-
-            YamlConfiguration data = new YamlConfiguration();
-            for (Map.Entry<UUID, Map<EntityType, Shadow>> entry : playerShadows.entrySet()) {
-                String playerUUID = entry.getKey().toString();
-                ConfigurationSection playerSection = data.createSection(playerUUID);
-                
-                for (Map.Entry<EntityType, Shadow> shadowEntry : entry.getValue().entrySet()) {
-                    String shadowType = shadowEntry.getKey().name();
-                    Shadow shadow = shadowEntry.getValue();
-                    ConfigurationSection shadowSection = playerSection.createSection(shadowType);
-                    
-                    // Save customization data
-                    shadowSection.set("customName", shadow.customName);
-                    shadowSection.set("title", shadow.title);
-                    shadowSection.set("particleEffect", shadow.particleEffect);
-                    shadowSection.set("kills", shadow.kills);
-                    shadowSection.set("evolutionLevel", shadow.evolutionLevel);
-                    shadowSection.set("evolutionPath", shadow.evolutionPath);
-                    shadowSection.set("evolutionPoints", shadow.evolutionPoints);
-                    
-                    // Save unlocked customizations
-                    ConfigurationSection unlockedSection = shadowSection.createSection("unlockedCustomizations");
-                    for (Map.Entry<String, Boolean> unlocked : shadow.unlockedCustomizations.entrySet()) {
-                        unlockedSection.set(unlocked.getKey(), unlocked.getValue());
-                    }
-                }
-            }
-            
-            data.save(shadowDataFile);
-            getLogger().info("Successfully saved shadow data");
-        } catch (Exception e) {
-            getLogger().severe("Failed to save shadow data: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    private void loadShadowData() {
-        try {
-            File shadowDataFile = new File(getDataFolder(), "shadowdata.yml");
-            if (!shadowDataFile.exists()) {
-                getLogger().info("No shadow data file found, creating new one");
-                return;
-            }
-
-            YamlConfiguration data = YamlConfiguration.loadConfiguration(shadowDataFile);
-            for (String playerUUID : data.getKeys(false)) {
-                UUID uuid = UUID.fromString(playerUUID);
-                Map<EntityType, Shadow> shadows = new HashMap<>();
-                ConfigurationSection playerSection = data.getConfigurationSection(playerUUID);
-                
-                if (playerSection != null) {
-                    for (String shadowType : playerSection.getKeys(false)) {
-                        try {
-                            EntityType type = EntityType.valueOf(shadowType);
-                            ConfigurationSection shadowSection = playerSection.getConfigurationSection(shadowType);
-                            
-                            if (shadowSection != null) {
-                                Shadow shadow = new Shadow(type);
-                                shadow.customName = shadowSection.getString("customName", "");
-                                shadow.title = shadowSection.getString("title", "");
-                                shadow.particleEffect = shadowSection.getString("particleEffect", "");
-                                shadow.kills = shadowSection.getInt("kills", 0);
-                                shadow.evolutionLevel = shadowSection.getString("evolutionLevel", "Basic");
-                                shadow.evolutionPath = shadowSection.getString("evolutionPath", "");
-                                shadow.evolutionPoints = shadowSection.getInt("evolutionPoints", 0);
-                                
-                                // Load unlocked customizations
-                                ConfigurationSection unlockedSection = shadowSection.getConfigurationSection("unlockedCustomizations");
-                                if (unlockedSection != null) {
-                                    for (String key : unlockedSection.getKeys(false)) {
-                                        shadow.unlockedCustomizations.put(key, unlockedSection.getBoolean(key));
-                                    }
-                                }
-                                
-                                shadows.put(type, shadow);
-                            }
-                        } catch (IllegalArgumentException e) {
-                            getLogger().warning("Invalid shadow type in data file: " + shadowType);
-                        }
-                    }
-                }
-                
-                playerShadows.put(uuid, shadows);
-            }
-            
-            getLogger().info("Successfully loaded shadow data");
-        } catch (Exception e) {
-            getLogger().severe("Failed to load shadow data: " + e.getMessage());
-            e.printStackTrace();
-        }
-    }
-
-    private void handleBlackMarketPurchase(Player player, ItemStack item) {
-        // Implementation for black market purchases
-    }
-
-    private void openCustomizationGUI(Player player) {
-        Inventory gui = Bukkit.createInventory(null, 27, GUI_TITLE_CUSTOMIZATION);
-
-        ItemStack particles = createGuiItem(
-            Material.BLAZE_POWDER,
-            ChatColor.GOLD + "Particle Effects",
-            ChatColor.GRAY + "Customize your shadow's particle effects"
-        );
-
-        ItemStack titles = createGuiItem(
-            Material.NAME_TAG,
-            ChatColor.GOLD + "Titles",
-            ChatColor.GRAY + "Choose a title for your shadow"
-        );
-
-        gui.setItem(11, particles);
-        gui.setItem(15, titles);
-        gui.setItem(22, createGuiItem(Material.BARRIER, ChatColor.RED + "Close"));
-
-        player.openInventory(gui);
-    }
-
-    private void handleShadowRename(Player player, String typeStr, String newName) {
-        try {
-            EntityType type = EntityType.valueOf(typeStr.toUpperCase());
-            Shadow shadow = playerShadows.get(player.getUniqueId()).get(type);
-            
-            if (shadow == null) {
-                player.sendMessage(ChatColor.RED + "You don't have this shadow type!");
-                return;
-            }
-
-            shadow.customName = newName;
-            if (shadow.activePet != null && shadow.activePet.isValid()) {
-                updateShadowDisplayName(shadow);
-            }
-            
-            player.sendMessage(ChatColor.GREEN + "Shadow renamed successfully!");
-            saveShadowData();
-        } catch (IllegalArgumentException e) {
-            player.sendMessage(ChatColor.RED + "Invalid shadow type!");
-        }
-    }
-
-    private ItemStack createGuiItem(Material material, String name, String... lore) {
-        ItemStack item = new ItemStack(material);
-        ItemMeta meta = item.getItemMeta();
-        if (meta != null) {
-            meta.setDisplayName(name);
-            meta.setLore(Arrays.asList(lore));
-            item.setItemMeta(meta);
-        }
-        return item;
-    }
-
-    private void startCleanupTask() {
-        new BukkitRunnable() {
-            @Override
-            public void run() {
-                try {
-                    cleanupInvalidPets();
-                } catch (Exception e) {
-                    getLogger().warning("Error during cleanup: " + e.getMessage());
-                }
-            }
-        }.runTaskTimer(this, 20L, 20L);
-    }
-
-    private void cleanupTasks() {
-        activeParticleTasks.forEach(BukkitRunnable::cancel);
-    }
-
-    private void cleanupInvalidPets() {
-        synchronized (activePets) {
-            Iterator<Map.Entry<UUID, Entity>> iterator = activePets.entrySet().iterator();
-            while (iterator.hasNext()) {
-                Map.Entry<UUID, Entity> entry = iterator.next();
-                Entity pet = entry.getValue();
-                if (!pet.isValid()) {
-                    iterator.remove();
-                    Player owner = Bukkit.getPlayer(entry.getKey());
-                    if (owner != null) {
-                        owner.sendMessage(ChatColor.RED + "Your shadow pet was lost!");
-                    }
-                }
-            }
-        }
-    }
-
-    private void removeActivePets() {
-        activePets.values().stream().filter(Entity::isValid).forEach(Entity::remove);
-    }
-
-    private int getSouls(Player player) {
-        return getConfig().getInt("souls." + player.getUniqueId(), 0);
-    }
-
-    private void setSouls(Player player, int souls) {
-        getConfig().set("souls." + player.getUniqueId(), souls);
-        saveConfig();
-    }
+    // Command Handling
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
-        if (!(sender instanceof Player)) {
-            sender.sendMessage(ChatColor.RED + "This command can only be used by players!");
+        if (!(sender instanceof Player player)) {
+            sender.sendMessage(MINI_MESSAGE.deserialize("<red>Only players can use this command!"));
             return true;
         }
-
-        Player player = (Player) sender;
 
         try {
             switch (command.getName().toLowerCase()) {
@@ -692,61 +157,79 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
                 case "blackmarket" -> openBlackMarket(player);
                 case "soulsadmin" -> {
                     if (!player.hasPermission("unchainedsouls.admin")) {
-                        player.sendMessage(ChatColor.RED + "You don't have permission to use this command!");
+                        player.sendMessage(MINI_MESSAGE.deserialize("<red>No permission!"));
                         return true;
                     }
                     handleAdminCommand(player, args);
                 }
-                default -> {
-                    return false;
-                }
+                default -> { return false; }
             }
         } catch (Exception e) {
             getLogger().log(Level.WARNING, "Error executing command: " + command.getName(), e);
-            player.sendMessage(ChatColor.RED + "An error occurred while executing the command.");
+            player.sendMessage(MINI_MESSAGE.deserialize("<red>An error occurred!"));
         }
-
         return true;
     }
 
+    /** Handles /souls command with MiniMessage formatting. */
     private void handleSoulsCommand(Player player, String[] args) {
         if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
             showSoulsHelp(player);
             return;
         }
 
-        String subCommand = args[0].toLowerCase();
-        switch (subCommand) {
+        switch (args[0].toLowerCase()) {
             case "balance" -> showBalance(player);
             case "withdraw", "deposit" -> {
                 if (args.length < 2) {
-                    player.sendMessage(ChatColor.RED + "Usage: /souls " + subCommand + " <amount>");
+                    player.sendMessage(MINI_MESSAGE.deserialize("<red>Usage: /souls " + args[0] + " <amount>"));
                     return;
                 }
                 try {
                     int amount = Integer.parseInt(args[1]);
-                    handleTransaction(player, subCommand, amount);
+                    handleTransaction(player, args[0], amount);
                 } catch (NumberFormatException e) {
-                    player.sendMessage(ChatColor.RED + "Please enter a valid number!");
+                    player.sendMessage(MINI_MESSAGE.deserialize("<red>Invalid number!"));
                 }
             }
-            default -> player.sendMessage(ChatColor.RED + "Unknown subcommand. Use /souls help for commands.");
+            default -> player.sendMessage(MINI_MESSAGE.deserialize("<red>Unknown subcommand. Use /souls help."));
         }
     }
 
+    /** Handles /shadow command for shadow pet management. */
+    private void handleShadowCommand(Player player, String[] args) {
+        if (args.length == 0 || args[0].equalsIgnoreCase("help")) {
+            showShadowHelp(player);
+            return;
+        }
+
+        switch (args[0].toLowerCase()) {
+            case "customize" -> openCustomizationGUI(player);
+            case "rename" -> {
+                if (args.length < 3) {
+                    player.sendMessage(MINI_MESSAGE.deserialize("<red>Usage: /shadow rename <type> <name>"));
+                    return;
+                }
+                handleShadowRename(player, args[1], args[2]);
+            }
+            default -> showShadowHelp(player);
+        }
+    }
+
+    /** Handles /soulsadmin command for admin functions. */
     private void handleAdminCommand(Player admin, String[] args) {
         if (args.length < 3) {
-            admin.sendMessage(ChatColor.RED + "Usage: /soulsadmin <give|take|set> <player> <amount>");
+            admin.sendMessage(MINI_MESSAGE.deserialize("<red>Usage: /soulsadmin <give|take|set> <player> <amount>"));
+            return;
+        }
+
+        Player target = Bukkit.getPlayer(args[1]);
+        if (target == null) {
+            admin.sendMessage(MINI_MESSAGE.deserialize("<red>Player not found!"));
             return;
         }
 
         try {
-            Player target = Bukkit.getPlayer(args[1]);
-            if (target == null) {
-                admin.sendMessage(ChatColor.RED + "Player not found!");
-                return;
-            }
-
             int amount = Integer.parseInt(args[2]);
             int currentSouls = getSouls(target);
 
@@ -755,52 +238,438 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
                 case "take" -> setSouls(target, Math.max(0, currentSouls - amount));
                 case "set" -> setSouls(target, amount);
                 default -> {
-                    admin.sendMessage(ChatColor.RED + "Invalid action! Use give, take, or set.");
+                    admin.sendMessage(MINI_MESSAGE.deserialize("<red>Use give, take, or set!"));
                     return;
                 }
             }
-
-            admin.sendMessage(ChatColor.GREEN + "Successfully modified " + target.getName() + "'s souls!");
-            target.sendMessage(ChatColor.GREEN + "Your soul balance has been updated!");
+            admin.sendMessage(MINI_MESSAGE.deserialize("<green>Updated " + target.getName() + "'s souls!"));
+            target.sendMessage(MINI_MESSAGE.deserialize("<green>Your soul balance was updated!"));
         } catch (NumberFormatException e) {
-            admin.sendMessage(ChatColor.RED + "Please enter a valid number!");
+            admin.sendMessage(MINI_MESSAGE.deserialize("<red>Invalid number!"));
         }
     }
 
-    private void showSoulsHelp(Player player) {
-        player.sendMessage(ChatColor.GOLD + "=== Souls Commands ===");
-        player.sendMessage(ChatColor.GOLD + "/souls balance " + ChatColor.WHITE + "- Check your soul balance");
-        player.sendMessage(ChatColor.GOLD + "/souls withdraw <amount> " + ChatColor.WHITE + "- Withdraw souls");
-        player.sendMessage(ChatColor.GOLD + "/souls deposit <amount> " + ChatColor.WHITE + "- Deposit souls");
+    // GUI Management
+
+    /** Opens the shadow customization GUI. */
+    private void openCustomizationGUI(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 27, MINI_MESSAGE.deserialize(GUI_TITLE_CUSTOMIZATION));
+        gui.setItem(11, createGuiItem(Material.BLAZE_POWDER, "<gold>Particle Effects", "<gray>Customize particle effects"));
+        gui.setItem(15, createGuiItem(Material.NAME_TAG, "<gold>Titles", "<gray>Choose a shadow title"));
+        gui.setItem(22, createGuiItem(Material.BARRIER, "<red>Close"));
+        player.openInventory(gui);
     }
 
-    private void showBalance(Player player) {
-        int souls = getSouls(player);
-        player.sendMessage(ChatColor.GREEN + "Your soul balance: " + ChatColor.GOLD + souls + " souls");
-    }
-
-    private void handleTransaction(Player player, String type, int amount) {
-        if (amount <= 0) {
-            player.sendMessage(ChatColor.RED + "Amount must be greater than zero!");
+    /** Opens the particle effects selection GUI. */
+    private void openParticleEffectsGUI(Player player, EntityType shadowType) {
+        if (shadowType == null) {
+            player.sendMessage(MINI_MESSAGE.deserialize("<red>No active shadow to customize!"));
             return;
         }
 
-        int currentSouls = getSouls(player);
-        if (type.equals("withdraw")) {
-            if (currentSouls < amount) {
-                player.sendMessage(ChatColor.RED + "You don't have enough souls!");
-                return;
+        Inventory gui = Bukkit.createInventory(null, 27, MINI_MESSAGE.deserialize(GUI_TITLE_PARTICLES));
+        ConfigurationSection effects = getConfig().getConfigurationSection("customization.particle_effects");
+        if (effects != null) {
+            int slot = 10;
+            Shadow shadow = playerShadows.get(player.getUniqueId()).get(shadowType);
+            for (String key : effects.getKeys(false)) {
+                ConfigurationSection effect = effects.getConfigurationSection(key);
+                if (effect == null) continue;
+
+                String name = effect.getString("name", "Unknown");
+                String desc = effect.getString("description", "");
+                int cost = effect.getInt("cost", 0);
+                boolean unlocked = shadow.unlockedCustomizations.getOrDefault("particle_" + key, false);
+
+                List<String> lore = Arrays.asList("<gray>" + desc, "",
+                        "<yellow>Cost: " + cost + " souls", "",
+                        unlocked ? "<green>UNLOCKED" : "<red>LOCKED");
+                gui.setItem(slot++, createGuiItem(Material.BLAZE_POWDER, "<gold>" + name, lore.toArray(new String[0])));
             }
-            setSouls(player, currentSouls - amount);
-            player.sendMessage(ChatColor.GREEN + "Successfully withdrew " + amount + " souls!");
-        } else {
-            setSouls(player, currentSouls + amount);
-            player.sendMessage(ChatColor.GREEN + "Successfully deposited " + amount + " souls!");
+        }
+        gui.setItem(18, createGuiItem(Material.ARROW, "<yellow>Back"));
+        gui.setItem(22, createGuiItem(Material.BARRIER, "<red>Close"));
+        player.openInventory(gui);
+    }
+
+    /** Opens the titles selection GUI. */
+    private void openTitlesGUI(Player player, EntityType shadowType) {
+        if (shadowType == null) {
+            player.sendMessage(MINI_MESSAGE.deserialize("<red>No active shadow to customize!"));
+            return;
+        }
+
+        Inventory gui = Bukkit.createInventory(null, 27, MINI_MESSAGE.deserialize(GUI_TITLE_TITLES));
+        ConfigurationSection titles = getConfig().getConfigurationSection("customization.titles");
+        if (titles != null) {
+            int slot = 10;
+            Shadow shadow = playerShadows.get(player.getUniqueId()).get(shadowType);
+            for (String key : titles.getKeys(false)) {
+                ConfigurationSection title = titles.getConfigurationSection(key);
+                if (title == null) continue;
+
+                String name = title.getString("name", "Unknown");
+                String desc = title.getString("description", "");
+                int cost = title.getInt("cost", 0);
+                boolean unlocked = shadow.unlockedCustomizations.getOrDefault("title_" + key, false);
+
+                List<String> lore = Arrays.asList("<gray>" + desc, "",
+                        "<yellow>Cost: " + cost + " souls", "",
+                        unlocked ? "<green>UNLOCKED" : "<red>LOCKED");
+                gui.setItem(slot++, createGuiItem(Material.NAME_TAG, "<gold>" + name, lore.toArray(new String[0])));
+            }
+        }
+        gui.setItem(18, createGuiItem(Material.ARROW, "<yellow>Back"));
+        gui.setItem(22, createGuiItem(Material.BARRIER, "<red>Close"));
+        player.openInventory(gui);
+    }
+
+    /** Opens the black market GUI with items from blackmarket.yml. */
+    private void openBlackMarket(Player player) {
+        Inventory gui = Bukkit.createInventory(null, 27, MINI_MESSAGE.deserialize(BLACK_MARKET_TITLE));
+        ConfigurationSection items = blackMarketConfig.getConfigurationSection("items");
+        if (items != null) {
+            int slot = 10;
+            for (String key : items.getKeys(false)) {
+                ConfigurationSection item = items.getConfigurationSection(key);
+                if (item == null) continue;
+
+                Material material = Material.valueOf(item.getString("material", "STONE").toUpperCase());
+                String name = item.getString("name", "Unknown Item");
+                int cost = item.getInt("cost", 100);
+                List<String> lore = item.getStringList("lore");
+                lore.add("");
+                lore.add("<yellow>Cost: " + cost + " souls");
+
+                ItemStack stack = createGuiItem(material, "<gold>" + name, lore.toArray(new String[0]));
+                stack.getItemMeta().getPersistentDataContainer().set(
+                        new NamespacedKey(this, "blackmarket_item"), PersistentDataType.STRING, key);
+                gui.setItem(slot++, stack);
+            }
+        }
+        gui.setItem(22, createGuiItem(Material.BARRIER, "<red>Close"));
+        player.openInventory(gui);
+    }
+
+    // Event Handlers
+
+    @EventHandler
+    public void onInventoryClick(InventoryClickEvent event) {
+        if (!(event.getWhoClicked() instanceof Player player)) return;
+        String title = PlainTextComponentSerializer.plainText().serialize(event.getView().getTitle());
+        if (!title.contains("Shadow Customization") && !title.contains("Particle Effects") &&
+                !title.contains("Shadow Titles") && !title.contains("Black Market")) return;
+
+        event.setCancelled(true);
+        ItemStack clicked = event.getCurrentItem();
+        if (clicked == null || !clicked.hasItemMeta()) return;
+
+        if (clicked.getType() == Material.BARRIER) {
+            player.closeInventory();
+        } else if (title.contains("Shadow Customization")) {
+            if (clicked.getType() == Material.BLAZE_POWDER) openParticleEffectsGUI(player, getCurrentShadowType(player));
+            else if (clicked.getType() == Material.NAME_TAG) openTitlesGUI(player, getCurrentShadowType(player));
+        } else if (title.contains("Particle Effects")) {
+            handleParticleEffectSelection(player, clicked);
+        } else if (title.contains("Shadow Titles")) {
+            handleTitleSelection(player, clicked);
+        } else if (title.contains("Black Market")) {
+            handleBlackMarketPurchase(player, clicked);
         }
     }
 
-    private void openBlackMarket(Player player) {
-        // Implementation for black market will be added later
-        player.sendMessage(ChatColor.GREEN + "Black Market is coming soon!");
+    // Utility Methods
+
+    /** Gets the type of the player's currently active shadow pet. */
+    private EntityType getCurrentShadowType(Player player) {
+        Entity activePet = activePets.get(player.getUniqueId());
+        return activePet != null ? activePet.getType() : null;
+    }
+
+    /** Applies or purchases a particle effect for a shadow. */
+    private void handleParticleEffectSelection(Player player, ItemStack clicked) {
+        String effectName = PlainTextComponentSerializer.plainText().serialize(clicked.getItemMeta().getDisplayName());
+        EntityType shadowType = getCurrentShadowType(player);
+        if (shadowType == null) {
+            player.sendMessage(MINI_MESSAGE.deserialize("<red>No active shadow!"));
+            return;
+        }
+
+        Shadow shadow = playerShadows.get(player.getUniqueId()).get(shadowType);
+        ConfigurationSection effects = getConfig().getConfigurationSection("customization.particle_effects");
+        for (String key : effects.getKeys(false)) {
+            ConfigurationSection effect = effects.getConfigurationSection(key);
+            if (effect.getString("name").equals(effectName)) {
+                int cost = effect.getInt("cost");
+                if (shadow.unlockedCustomizations.getOrDefault("particle_" + key, false)) {
+                    shadow.particleEffect = key;
+                    player.sendMessage(MINI_MESSAGE.deserialize("<green>Particle effect applied!"));
+                } else if (getSouls(player) >= cost) {
+                    setSouls(player, getSouls(player) - cost);
+                    shadow.unlockedCustomizations.put("particle_" + key, true);
+                    shadow.particleEffect = key;
+                    player.sendMessage(MINI_MESSAGE.deserialize("<green>Particle effect purchased and applied!"));
+                } else {
+                    player.sendMessage(MINI_MESSAGE.deserialize("<red>Need " + cost + " souls!"));
+                }
+                saveShadowData();
+                break;
+            }
+        }
+    }
+
+    /** Applies or purchases a title for a shadow. */
+    private void handleTitleSelection(Player player, ItemStack clicked) {
+        String titleName = PlainTextComponentSerializer.plainText().serialize(clicked.getItemMeta().getDisplayName());
+        EntityType shadowType = getCurrentShadowType(player);
+        if (shadowType == null) {
+            player.sendMessage(MINI_MESSAGE.deserialize("<red>No active shadow!"));
+            return;
+        }
+
+        Shadow shadow = playerShadows.get(player.getUniqueId()).get(shadowType);
+        ConfigurationSection titles = getConfig().getConfigurationSection("customization.titles");
+        for (String key : titles.getKeys(false)) {
+            ConfigurationSection title = titles.getConfigurationSection(key);
+            if (title.getString("name").equals(titleName)) {
+                int cost = title.getInt("cost");
+                if (shadow.unlockedCustomizations.getOrDefault("title_" + key, false)) {
+                    shadow.title = titleName;
+                    updateShadowDisplayName(shadow);
+                    player.sendMessage(MINI_MESSAGE.deserialize("<green>Title applied!"));
+                } else if (getSouls(player) >= cost) {
+                    setSouls(player, getSouls(player) - cost);
+                    shadow.unlockedCustomizations.put("title_" + key, true);
+                    shadow.title = titleName;
+                    updateShadowDisplayName(shadow);
+                    player.sendMessage(MINI_MESSAGE.deserialize("<green>Title purchased and applied!"));
+                } else {
+                    player.sendMessage(MINI_MESSAGE.deserialize("<red>Need " + cost + " souls!"));
+                }
+                saveShadowData();
+                break;
+            }
+        }
+    }
+
+    /** Handles black market purchases. */
+    private void handleBlackMarketPurchase(Player player, ItemStack clicked) {
+        ItemMeta meta = clicked.getItemMeta();
+        String itemKey = meta.getPersistentDataContainer().get(
+                new NamespacedKey(this, "blackmarket_item"), PersistentDataType.STRING);
+        if (itemKey == null) return;
+
+        ConfigurationSection item = blackMarketConfig.getConfigurationSection("items." + itemKey);
+        int cost = item.getInt("cost", 100);
+        if (getSouls(player) < cost) {
+            player.sendMessage(MINI_MESSAGE.deserialize("<red>You need " + cost + " souls to buy this!"));
+            return;
+        }
+
+        setSouls(player, getSouls(player) - cost);
+        String action = item.getString("action", "message");
+        switch (action.toLowerCase()) {
+            case "message" -> player.sendMessage(MINI_MESSAGE.deserialize(item.getString("value", "<green>Purchase successful!")));
+            case "effect" -> {
+                Shadow shadow = playerShadows.get(player.getUniqueId()).get(getCurrentShadowType(player));
+                if (shadow != null) {
+                    shadow.particleEffect = item.getString("value");
+                    shadow.unlockedCustomizations.put("particle_" + item.getString("value"), true);
+                    player.sendMessage(MINI_MESSAGE.deserialize("<green>Effect unlocked and applied!"));
+                }
+            }
+            // Add more actions (e.g., item give, ability unlock) as needed
+        }
+        saveShadowData();
+        player.sendMessage(MINI_MESSAGE.deserialize("<green>Purchase completed!"));
+    }
+
+    /** Updates the display name of an active shadow pet with MiniMessage. */
+    private void updateShadowDisplayName(Shadow shadow) {
+        if (shadow.activePet == null || !shadow.activePet.isValid()) return;
+        String displayName = shadow.title.isEmpty() ? "" : "<gold>[" + shadow.title + "] ";
+        displayName += shadow.customName.isEmpty() ? "<gray>" + shadow.type.name() + " Shadow" : shadow.customName;
+        shadow.activePet.customName(MINI_MESSAGE.deserialize(displayName));
+        shadow.activePet.setCustomNameVisible(true);
+    }
+
+    /** Renames a shadow pet. */
+    private void handleShadowRename(Player player, String typeStr, String newName) {
+        try {
+            EntityType type = EntityType.valueOf(typeStr.toUpperCase());
+            Shadow shadow = playerShadows.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>()).get(type);
+            if (shadow == null) {
+                player.sendMessage(MINI_MESSAGE.deserialize("<red>You don’t have this shadow type!"));
+                return;
+            }
+            shadow.customName = newName;
+            if (shadow.activePet != null && shadow.activePet.isValid()) updateShadowDisplayName(shadow);
+            player.sendMessage(MINI_MESSAGE.deserialize("<green>Shadow renamed successfully!"));
+            saveShadowData();
+        } catch (IllegalArgumentException e) {
+            player.sendMessage(MINI_MESSAGE.deserialize("<red>Invalid shadow type!"));
+        }
+    }
+
+    /** Creates a formatted GUI item with MiniMessage support. */
+    private ItemStack createGuiItem(Material material, String name, String... lore) {
+        ItemStack item = new ItemStack(material);
+        ItemMeta meta = item.getItemMeta();
+        if (meta != null) {
+            meta.displayName(MINI_MESSAGE.deserialize(name));
+            meta.lore(Arrays.stream(lore).map(MINI_MESSAGE::deserialize).collect(Collectors.toList()));
+            item.setItemMeta(meta);
+        }
+        return item;
+    }
+
+    /** Saves shadow data to shadowdata.yml. */
+    private void saveShadowData() {
+        try {
+            File file = new File(getDataFolder(), "shadowdata.yml");
+            YamlConfiguration data = new YamlConfiguration();
+            for (Map.Entry<UUID, Map<EntityType, Shadow>> entry : playerShadows.entrySet()) {
+                ConfigurationSection playerSection = data.createSection(entry.getKey().toString());
+                for (Map.Entry<EntityType, Shadow> shadowEntry : entry.getValue().entrySet()) {
+                    Shadow shadow = shadowEntry.getValue();
+                    ConfigurationSection shadowSection = playerSection.createSection(shadowEntry.getKey().name());
+                    shadowSection.set("customName", shadow.customName);
+                    shadowSection.set("title", shadow.title);
+                    shadowSection.set("particleEffect", shadow.particleEffect);
+                    shadowSection.set("kills", shadow.kills);
+                    shadowSection.set("evolutionLevel", shadow.evolutionLevel);
+                    shadowSection.set("evolutionPath", shadow.evolutionPath);
+                    shadowSection.set("evolutionPoints", shadow.evolutionPoints);
+                    ConfigurationSection unlocked = shadowSection.createSection("unlockedCustomizations");
+                    shadow.unlockedCustomizations.forEach(unlocked::set);
+                }
+            }
+            data.save(file);
+            getLogger().info("Shadow data saved successfully!");
+        } catch (Exception e) {
+            getLogger().log(Level.SEVERE, "Failed to save shadow data", e);
+        }
+    }
+
+    /** Loads shadow data from shadowdata.yml. */
+    private void loadShadowData() {
+        File file = new File(getDataFolder(), "shadowdata.yml");
+        if (!file.exists()) return;
+
+        try {
+            YamlConfiguration data = YamlConfiguration.loadConfiguration(file);
+            for (String uuidStr : data.getKeys(false)) {
+                UUID uuid = UUID.fromString(uuidStr);
+                Map<EntityType, Shadow> shadows = new HashMap<>();
+                ConfigurationSection playerSection = data.getConfigurationSection(uuidStr);
+                if (playerSection != null) {
+                    for (String typeStr : playerSection.getKeys(false)) {
+                        EntityType type = EntityType.valueOf(typeStr);
+                        ConfigurationSection shadowSection = playerSection.getConfigurationSection(typeStr);
+                        Shadow shadow = new Shadow(type);
+                        shadow.customName = shadowSection.getString("customName", "");
+                        shadow.title = shadowSection.getString("title", "");
+                        shadow.particleEffect = shadowSection.getString("particleEffect", "");
+                        shadow.kills = shadowSection.getInt("kills", 0);
+                        shadow.evolutionLevel = shadowSection.getString("evolutionLevel", "Basic");
+                        shadow.evolutionPath = shadowSection.getString("evolutionPath", "");
+                        shadow.evolutionPoints = shadowSection.getInt("evolutionPoints", 0);
+                        ConfigurationSection unlocked = shadowSection.getConfigurationSection("unlockedCustomizations");
+                        if (unlocked != null) {
+                            for (String key : unlocked.getKeys(false)) {
+                                shadow.unlockedCustomizations.put(key, unlocked.getBoolean(key));
+                            }
+                        }
+                        shadows.put(type, shadow);
+                    }
+                }
+                playerShadows.put(uuid, shadows);
+            }
+            getLogger().info("Shadow data loaded successfully!");
+        } catch (Exception e) {
+            getLogger().log(Level.SEVERE, "Failed to load shadow data", e);
+        }
+    }
+
+    /** Shows help for /souls command with MiniMessage. */
+    private void showSoulsHelp(Player player) {
+        player.sendMessage(MINI_MESSAGE.deserialize("<gold>=== Souls Commands ==="));
+        player.sendMessage(MINI_MESSAGE.deserialize("<gold>/souls balance <white>- Check soul balance"));
+        player.sendMessage(MINI_MESSAGE.deserialize("<gold>/souls withdraw <amount> <white>- Withdraw souls"));
+        player.sendMessage(MINI_MESSAGE.deserialize("<gold>/souls deposit <amount> <white>- Deposit souls"));
+    }
+
+    /** Shows help for /shadow command with MiniMessage. */
+    private void showShadowHelp(Player player) {
+        player.sendMessage(MINI_MESSAGE.deserialize("<gold>=== Shadow Commands ==="));
+        player.sendMessage(MINI_MESSAGE.deserialize("<gold>/shadow customize <white>- Open customization menu"));
+        player.sendMessage(MINI_MESSAGE.deserialize("<gold>/shadow rename <type> <name> <white>- Rename a shadow"));
+    }
+
+    /** Displays the player's soul balance with MiniMessage. */
+    private void showBalance(Player player) {
+        player.sendMessage(MINI_MESSAGE.deserialize("<green>Soul Balance: <gold>" + getSouls(player) + " souls"));
+    }
+
+    /** Handles soul transactions (withdraw/deposit). */
+    private void handleTransaction(Player player, String type, int amount) {
+        if (amount <= 0) {
+            player.sendMessage(MINI_MESSAGE.deserialize("<red>Amount must be positive!"));
+            return;
+        }
+        int currentSouls = getSouls(player);
+        if (type.equals("withdraw")) {
+            if (currentSouls < amount) {
+                player.sendMessage(MINI_MESSAGE.deserialize("<red>Not enough souls!"));
+                return;
+            }
+            setSouls(player, currentSouls - amount);
+            player.sendMessage(MINI_MESSAGE.deserialize("<green>Withdrew " + amount + " souls!"));
+        } else {
+            setSouls(player, currentSouls + amount);
+            player.sendMessage(MINI_MESSAGE.deserialize("<green>Deposited " + amount + " souls!"));
+        }
+    }
+
+    /** Gets the player's soul balance. */
+    private int getSouls(Player player) {
+        return getConfig().getInt("souls." + player.getUniqueId(), 0);
+    }
+
+    /** Sets the player's soul balance. */
+    private void setSouls(Player player, int souls) {
+        getConfig().set("souls." + player.getUniqueId(), souls);
+        saveConfig();
+    }
+
+    /** Starts a task to clean up invalid pets. */
+    private void startCleanupTask() {
+        new BukkitRunnable() {
+            @Override
+            public void run() {
+                synchronized (activePets) {
+                    activePets.entrySet().removeIf(entry -> {
+                        if (!entry.getValue().isValid()) {
+                            Player owner = Bukkit.getPlayer(entry.getKey());
+                            if (owner != null) owner.sendMessage(MINI_MESSAGE.deserialize("<red>Your shadow pet was lost!"));
+                            return true;
+                        }
+                        return false;
+                    });
+                }
+            }
+        }.runTaskTimer(this, 20L, 20L);
+    }
+
+    /** Cleans up particle tasks on disable. */
+    private void cleanupTasks() {
+        activeParticleTasks.forEach(BukkitRunnable::cancel);
+        activeParticleTasks.clear();
+    }
+
+    /** Removes all active pets on disable. */
+    private void removeActivePets() {
+        activePets.values().stream().filter(Entity::isValid).forEach(Entity::remove);
+        activePets.clear();
     }
 }
