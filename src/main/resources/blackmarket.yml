@@ -1,4 +1,5 @@
-BlackMarket Config and stuff idk
+# UnchainedSouls Black Market Configuration
+
 items:
   shadow_dust:
     material: GUNPOWDER
@@ -6,13 +7,33 @@ items:
     cost: 50
     lore:
       - "<gray>A mysterious dust from the void."
+      - "<gray>Perhaps it has hidden uses..."
     action: "message"
-    value: "<green>You’ve acquired Shadow Dust!"
+    value: "<green>You’ve acquired Shadow Dust! What will you do with it?"
   dark_aura:
     material: BLAZE_POWDER
     name: "<dark_purple>Dark Aura"
     cost: 100
     lore:
-      - "<gray>Unlocks a dark particle effect."
+      - "<gray>Unlocks a dark particle effect for your shadow."
+      - "<gray>Surrounds it with an eerie glow."
     action: "effect"
     value: "dark_aura"
+  soul_essence:
+    material: GHAST_TEAR
+    name: "<gold>Soul Essence"
+    cost: 200
+    lore:
+      - "<gray>A rare essence of captured souls."
+      - "<gray>Grants a burst of soul energy."
+    action: "souls"
+    value: 50  # Grants 50 souls
+  phantom_blade:
+    material: IRON_SWORD
+    name: "<blue>Phantom Blade"
+    cost: 300
+    lore:
+      - "<gray>A spectral weapon forged from shadows."
+      - "<gray>Increases your shadow’s damage slightly."
+    action: "message"  # Placeholder; could be expanded to boost shadow damage
+    value: "<green>The Phantom Blade empowers your shadow!"
