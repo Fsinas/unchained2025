@@ -621,37 +621,43 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
         }
     }
 
-    /** Handles black market purchases. */
-    private void handleBlackMarketPurchase(Player player, ItemStack clicked) {
-        ItemMeta meta = clicked.getItemMeta();
-        String itemKey = meta.getPersistentDataContainer().get(
-                new NamespacedKey(this, "blackmarket_item"), PersistentDataType.STRING);
-        if (itemKey == null) return;
+/** Handles black market purchases. */
+private void handleBlackMarketPurchase(Player player, ItemStack clicked) {
+    ItemMeta meta = clicked.getItemMeta();
+    String itemKey = meta.getPersistentDataContainer().get(
+            new NamespacedKey(this, "blackmarket_item"), PersistentDataType.STRING);
+    if (itemKey == null) return;
 
-        ConfigurationSection item = blackMarketConfig.getConfigurationSection("items." + itemKey);
-        int cost = item.getInt("cost", 100);
-        if (getSouls(player) < cost) {
-            player.sendMessage(MINI_MESSAGE.deserialize("<red>You need <gold>" + cost + " souls</gold> to buy this!"));
-            return;
-        }
-
-        setSouls(player, getSouls(player) - cost);
-        String action = item.getString("action", "message");
-        switch (action.toLowerCase()) {
-            case "message" -> player.sendMessage(MINI_MESSAGE.deserialize(item.getString("value", "<green>Purchase successful!")));
-            case "effect" -> {
-                Shadow shadow = playerShadows.get(player.getUniqueId()).get(getCurrentShadowType(player));
-                if (shadow != null) {
-                    shadow.particleEffect = item.getString("value");
-                    shadow.unlockedCustomizations.put("particle_" + item.getString("value"), true);
-                    player.sendMessage(MINI_MESSAGE.deserialize("<green>Effect unlocked and applied!"));
-                }
-            }
-        }
-        saveShadowData();
-        player.sendMessage(MINI_MESSAGE.deserialize("<green>Purchase completed!"));
+    ConfigurationSection item = blackMarketConfig.getConfigurationSection("items." + itemKey);
+    int cost = item.getInt("cost", 100);
+    if (getSouls(player) < cost) {
+        player.sendMessage(MINI_MESSAGE.deserialize("<red>You need <gold>" + cost + " souls</gold> to buy this!"));
+        return;
     }
 
+    setSouls(player, getSouls(player) - cost);
+    String action = item.getString("action", "message");
+    switch (action.toLowerCase()) {
+        case "message" -> player.sendMessage(MINI_MESSAGE.deserialize(item.getString("value", "<green>Purchase successful!")));
+        case "effect" -> {
+            Shadow shadow = playerShadows.get(player.getUniqueId()).get(getCurrentShadowType(player));
+            if (shadow != null) {
+                shadow.particleEffect = item.getString("value");
+                shadow.unlockedCustomizations.put("particle_" + item.getString("value"), true);
+                player.sendMessage(MINI_MESSAGE.deserialize("<green>Effect unlocked and applied!"));
+            } else {
+                player.sendMessage(MINI_MESSAGE.deserialize("<red>You need an active shadow to apply this effect!"));
+            }
+        }
+        case "souls" -> {
+            int soulAmount = item.getInt("value", 0);
+            setSouls(player, getSouls(player) + soulAmount);
+            player.sendMessage(MINI_MESSAGE.deserialize("<green>Gained <gold>" + soulAmount + " souls</gold> from your purchase!"));
+        }
+    }
+    saveShadowData();
+    player.sendMessage(MINI_MESSAGE.deserialize("<green>Purchase completed!"));
+}
     /** Updates the display name of an active shadow pet with MiniMessage, including tags. */
     private void updateShadowDisplayName(Shadow shadow) {
         if (shadow.activePet == null || !shadow.activePet.isValid()) return;
