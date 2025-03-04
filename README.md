@@ -1,11 +1,12 @@
 # 🌙 UnchainedSouls Plugin
-
+![atsisiųsti](https://github.com/user-attachments/assets/910cd738-226e-41de-9691-355d5f5ae9e7)
 ![Minecraft Version](https://img.shields.io/badge/Minecraft-1.21.4-brightgreen)  
 ![Java Version](https://img.shields.io/badge/Java-17%2B-blue)  
 ![Paper](https://img.shields.io/badge/Server-Paper-orange)  
 ![License](https://img.shields.io/badge/License-Use%20At%20Your%20Own%20Risk-red)
 
 A **Minecraft Paper plugin** that unleashes a mystical shadow/pet system. Extract souls, evolve shadow pets, and dominate with your dark companions!
+
 
 > ⚠️ *Crafted with AI assistance—proceed with caution!*
 
