@@ -4,11 +4,13 @@ import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
 import org.bukkit.*;
+import org.bukkit.attribute.Attribute;
 import org.bukkit.command.*;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.*;
 import org.bukkit.entity.*;
 import org.bukkit.event.*;
+import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.event.inventory.InventoryClickEvent;
 import org.bukkit.inventory.*;
 import org.bukkit.inventory.meta.*;
@@ -21,8 +23,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.logging.Level;
 
 /**
- * Main plugin class for UnchainedSouls, implementing a shadow/pet system with MiniMessage support and black market.
- * Compatible with Paper 1.21.4.
+ * Main plugin class for UnchainedSouls, implementing a shadow/pet system with MiniMessage support, black market, and tags.
+ * With love, from Fsin. Compatible with Paper 1.21.4.
  */
 public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor {
 
@@ -33,6 +35,7 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
     private static final String GUI_TITLE_CUSTOMIZATION = "<dark_purple>Shadow Customization";
     private static final String GUI_TITLE_PARTICLES = "<dark_purple>Particle Effects";
     private static final String GUI_TITLE_TITLES = "<dark_purple>Shadow Titles";
+    private static final String GUI_TITLE_TAGS = "<dark_purple>Shadow Tags";
     private static final String BLACK_MARKET_TITLE = "<dark_purple>Black Market";
 
     // Shadow pet data structure
@@ -49,8 +52,10 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
         String customName = "";
         String title = "";
         String particleEffect = "";
+        String tag = ""; // New field for tags
         Map<String, Integer> unlockedAbilities = new HashMap<>();
         Map<String, Boolean> unlockedCustomizations = new HashMap<>();
+        Map<String, Boolean> unlockedTags = new HashMap<>(); // Tracks purchased tags
 
         Shadow(EntityType type) {
             this.type = type;
@@ -67,6 +72,7 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
     private final Map<UUID, Entity> activePets = new ConcurrentHashMap<>();
     private final Set<BukkitRunnable> activeParticleTasks = Collections.synchronizedSet(new HashSet<>());
     private final Random random = new Random();
+    private Map<EntityType, Integer> soulDrops; // Configurable soul drops
 
     // Config constants
     private int healthUpgradeCost;
@@ -126,6 +132,22 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
             particleUpdateTicks = getConfig().getLong("particles.update_interval", 5L);
             extractionTimeout = getConfig().getInt("particles.extraction_timeout", 2400);
 
+            // Load soul drops
+            soulDrops = new HashMap<>();
+            ConfigurationSection drops = getConfig().getConfigurationSection("soul_drops");
+            if (drops != null) {
+                for (String key : drops.getKeys(false)) {
+                    try {
+                        EntityType type = EntityType.valueOf(key.toUpperCase());
+                        soulDrops.put(type, drops.getInt(key));
+                    } catch (IllegalArgumentException e) {
+                        getLogger().warning("Invalid entity type in soul_drops: " + key);
+                    }
+                }
+            }
+            soulDrops.putIfAbsent(EntityType.PLAYER, 50); // Default player soul drop
+            soulDrops.putIfAbsent(EntityType.ZOMBIE, 5);  // Default mob soul drop
+
             loadShadowData();
             getLogger().info("Configurations loaded successfully!");
         } catch (Exception e) {
@@ -133,7 +155,7 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
         }
     }
 
-    /** Registers plugin commands. */
+    /** Registers plugin commands with permissions. */
     private void registerCommands() {
         Objects.requireNonNull(getCommand("souls")).setExecutor(this);
         Objects.requireNonNull(getCommand("shadow")).setExecutor(this);
@@ -152,9 +174,27 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
 
         try {
             switch (command.getName().toLowerCase()) {
-                case "souls" -> handleSoulsCommand(player, args);
-                case "shadow" -> handleShadowCommand(player, args);
-                case "blackmarket" -> openBlackMarket(player);
+                case "souls" -> {
+                    if (!player.hasPermission("unchainedsouls.souls.use")) {
+                        player.sendMessage(MINI_MESSAGE.deserialize("<red>No permission!"));
+                        return true;
+                    }
+                    handleSoulsCommand(player, args);
+                }
+                case "shadow" -> {
+                    if (!player.hasPermission("unchainedsouls.shadow.manage")) {
+                        player.sendMessage(MINI_MESSAGE.deserialize("<red>No permission!"));
+                        return true;
+                    }
+                    handleShadowCommand(player, args);
+                }
+                case "blackmarket" -> {
+                    if (!player.hasPermission("unchainedsouls.blackmarket")) {
+                        player.sendMessage(MINI_MESSAGE.deserialize("<red>No permission!"));
+                        return true;
+                    }
+                    openBlackMarket(player);
+                }
                 case "soulsadmin" -> {
                     if (!player.hasPermission("unchainedsouls.admin")) {
                         player.sendMessage(MINI_MESSAGE.deserialize("<red>No permission!"));
@@ -166,7 +206,7 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
             }
         } catch (Exception e) {
             getLogger().log(Level.WARNING, "Error executing command: " + command.getName(), e);
-            player.sendMessage(MINI_MESSAGE.deserialize("<red>An error occurred!"));
+            player.sendMessage(MINI_MESSAGE.deserialize("<red>An error occurred! Check console for details."));
         }
         return true;
     }
@@ -204,6 +244,14 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
         }
 
         switch (args[0].toLowerCase()) {
+            case "summon" -> {
+                if (args.length < 2) {
+                    player.sendMessage(MINI_MESSAGE.deserialize("<red>Usage: /shadow summon <type>"));
+                    return;
+                }
+                summonShadow(player, args[1]);
+            }
+            case "dismiss" -> dismissShadow(player);
             case "customize" -> openCustomizationGUI(player);
             case "rename" -> {
                 if (args.length < 3) {
@@ -212,6 +260,7 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
                 }
                 handleShadowRename(player, args[1], args[2]);
             }
+            case "tags" -> openTagsGUI(player);
             default -> showShadowHelp(player);
         }
     }
@@ -255,7 +304,8 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
     private void openCustomizationGUI(Player player) {
         Inventory gui = Bukkit.createInventory(null, 27, MINI_MESSAGE.deserialize(GUI_TITLE_CUSTOMIZATION));
         gui.setItem(11, createGuiItem(Material.BLAZE_POWDER, "<gold>Particle Effects", "<gray>Customize particle effects"));
-        gui.setItem(15, createGuiItem(Material.NAME_TAG, "<gold>Titles", "<gray>Choose a shadow title"));
+        gui.setItem(13, createGuiItem(Material.NAME_TAG, "<gold>Titles", "<gray>Choose a shadow title"));
+        gui.setItem(15, createGuiItem(Material.BOOK, "<gold>Tags", "<gray>Manage shadow tags"));
         gui.setItem(22, createGuiItem(Material.BARRIER, "<red>Close"));
         player.openInventory(gui);
     }
@@ -324,6 +374,39 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
         player.openInventory(gui);
     }
 
+    /** Opens the tags selection GUI. */
+    private void openTagsGUI(Player player) {
+        EntityType shadowType = getCurrentShadowType(player);
+        if (shadowType == null) {
+            player.sendMessage(MINI_MESSAGE.deserialize("<red>No active shadow to tag!"));
+            return;
+        }
+
+        Inventory gui = Bukkit.createInventory(null, 27, MINI_MESSAGE.deserialize(GUI_TITLE_TAGS));
+        ConfigurationSection tags = getConfig().getConfigurationSection("customization.tags");
+        if (tags != null) {
+            int slot = 10;
+            Shadow shadow = playerShadows.get(player.getUniqueId()).get(shadowType);
+            for (String key : tags.getKeys(false)) {
+                ConfigurationSection tag = tags.getConfigurationSection(key);
+                if (tag == null) continue;
+
+                String name = tag.getString("name", "Unknown");
+                String desc = tag.getString("description", "");
+                int cost = tag.getInt("cost", 0);
+                boolean unlocked = shadow.unlockedTags.getOrDefault(key, false);
+
+                List<String> lore = Arrays.asList("<gray>" + desc, "",
+                        "<yellow>Cost: " + cost + " souls", "",
+                        unlocked ? "<green>UNLOCKED" : "<red>LOCKED");
+                gui.setItem(slot++, createGuiItem(Material.NAME_TAG, "<gold>" + name, lore.toArray(new String[0])));
+            }
+        }
+        gui.setItem(18, createGuiItem(Material.ARROW, "<yellow>Back"));
+        gui.setItem(22, createGuiItem(Material.BARRIER, "<red>Close"));
+        player.openInventory(gui);
+    }
+
     /** Opens the black market GUI with items from blackmarket.yml. */
     private void openBlackMarket(Player player) {
         Inventory gui = Bukkit.createInventory(null, 27, MINI_MESSAGE.deserialize(BLACK_MARKET_TITLE));
@@ -358,7 +441,7 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
         if (!(event.getWhoClicked() instanceof Player player)) return;
         String title = PlainTextComponentSerializer.plainText().serialize(event.getView().getTitle());
         if (!title.contains("Shadow Customization") && !title.contains("Particle Effects") &&
-                !title.contains("Shadow Titles") && !title.contains("Black Market")) return;
+                !title.contains("Shadow Titles") && !title.contains("Shadow Tags") && !title.contains("Black Market")) return;
 
         event.setCancelled(true);
         ItemStack clicked = event.getCurrentItem();
@@ -369,13 +452,27 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
         } else if (title.contains("Shadow Customization")) {
             if (clicked.getType() == Material.BLAZE_POWDER) openParticleEffectsGUI(player, getCurrentShadowType(player));
             else if (clicked.getType() == Material.NAME_TAG) openTitlesGUI(player, getCurrentShadowType(player));
+            else if (clicked.getType() == Material.BOOK) openTagsGUI(player);
         } else if (title.contains("Particle Effects")) {
             handleParticleEffectSelection(player, clicked);
         } else if (title.contains("Shadow Titles")) {
             handleTitleSelection(player, clicked);
+        } else if (title.contains("Shadow Tags")) {
+            handleTagSelection(player, clicked);
         } else if (title.contains("Black Market")) {
             handleBlackMarketPurchase(player, clicked);
         }
+    }
+
+    @EventHandler
+    public void onEntityDeath(EntityDeathEvent event) {
+        Player killer = event.getEntity().getKiller();
+        if (killer == null) return;
+
+        EntityType type = event.getEntityType();
+        int souls = soulDrops.getOrDefault(type, 1); // Default to 1 if not configured
+        setSouls(killer, getSouls(killer) + souls);
+        killer.sendMessage(MINI_MESSAGE.deserialize("<green>Gained <gold>" + souls + " souls</gold> from " + type.name() + "!"));
     }
 
     // Utility Methods
@@ -384,6 +481,44 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
     private EntityType getCurrentShadowType(Player player) {
         Entity activePet = activePets.get(player.getUniqueId());
         return activePet != null ? activePet.getType() : null;
+    }
+
+    /** Summons a shadow pet for the player. */
+    private void summonShadow(Player player, String typeStr) {
+        try {
+            EntityType type = EntityType.valueOf(typeStr.toUpperCase());
+            Shadow shadow = playerShadows.computeIfAbsent(player.getUniqueId(), k -> new HashMap<>())
+                    .computeIfAbsent(type, Shadow::new);
+
+            if (activePets.containsKey(player.getUniqueId())) {
+                player.sendMessage(MINI_MESSAGE.deserialize("<red>You already have an active shadow! Dismiss it first."));
+                return;
+            }
+
+            Entity pet = player.getWorld().spawnEntity(player.getLocation(), type);
+            pet.setCustomNameVisible(true);
+            updateShadowDisplayName(shadow);
+            pet.getAttribute(Attribute.GENERIC_MAX_HEALTH).setBaseValue(shadow.health * 20.0);
+            pet.setHealth(pet.getAttribute(Attribute.GENERIC_MAX_HEALTH).getValue());
+            shadow.activePet = pet;
+            activePets.put(player.getUniqueId(), pet);
+            player.sendMessage(MINI_MESSAGE.deserialize("<green>Summoned your " + type.name() + " shadow!"));
+            saveShadowData();
+        } catch (IllegalArgumentException e) {
+            player.sendMessage(MINI_MESSAGE.deserialize("<red>Invalid shadow type!"));
+        }
+    }
+
+    /** Dismisses the player's active shadow pet. */
+    private void dismissShadow(Player player) {
+        Entity pet = activePets.remove(player.getUniqueId());
+        if (pet == null || !pet.isValid()) {
+            player.sendMessage(MINI_MESSAGE.deserialize("<red>No active shadow to dismiss!"));
+            return;
+        }
+        pet.remove();
+        player.sendMessage(MINI_MESSAGE.deserialize("<green>Dismissed your shadow!"));
+        saveShadowData();
     }
 
     /** Applies or purchases a particle effect for a shadow. */
@@ -410,7 +545,7 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
                     shadow.particleEffect = key;
                     player.sendMessage(MINI_MESSAGE.deserialize("<green>Particle effect purchased and applied!"));
                 } else {
-                    player.sendMessage(MINI_MESSAGE.deserialize("<red>Need " + cost + " souls!"));
+                    player.sendMessage(MINI_MESSAGE.deserialize("<red>Need <gold>" + cost + " souls</gold>!"));
                 }
                 saveShadowData();
                 break;
@@ -444,7 +579,41 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
                     updateShadowDisplayName(shadow);
                     player.sendMessage(MINI_MESSAGE.deserialize("<green>Title purchased and applied!"));
                 } else {
-                    player.sendMessage(MINI_MESSAGE.deserialize("<red>Need " + cost + " souls!"));
+                    player.sendMessage(MINI_MESSAGE.deserialize("<red>Need <gold>" + cost + " souls</gold>!"));
+                }
+                saveShadowData();
+                break;
+            }
+        }
+    }
+
+    /** Applies or purchases a tag for a shadow. */
+    private void handleTagSelection(Player player, ItemStack clicked) {
+        String tagName = PlainTextComponentSerializer.plainText().serialize(clicked.getItemMeta().getDisplayName());
+        EntityType shadowType = getCurrentShadowType(player);
+        if (shadowType == null) {
+            player.sendMessage(MINI_MESSAGE.deserialize("<red>No active shadow!"));
+            return;
+        }
+
+        Shadow shadow = playerShadows.get(player.getUniqueId()).get(shadowType);
+        ConfigurationSection tags = getConfig().getConfigurationSection("customization.tags");
+        for (String key : tags.getKeys(false)) {
+            ConfigurationSection tag = tags.getConfigurationSection(key);
+            if (tag.getString("name").equals(tagName)) {
+                int cost = tag.getInt("cost");
+                if (shadow.unlockedTags.getOrDefault(key, false)) {
+                    shadow.tag = tagName;
+                    updateShadowDisplayName(shadow);
+                    player.sendMessage(MINI_MESSAGE.deserialize("<green>Tag applied!"));
+                } else if (getSouls(player) >= cost) {
+                    setSouls(player, getSouls(player) - cost);
+                    shadow.unlockedTags.put(key, true);
+                    shadow.tag = tagName;
+                    updateShadowDisplayName(shadow);
+                    player.sendMessage(MINI_MESSAGE.deserialize("<green>Tag purchased and applied!"));
+                } else {
+                    player.sendMessage(MINI_MESSAGE.deserialize("<red>Need <gold>" + cost + " souls</gold>!"));
                 }
                 saveShadowData();
                 break;
@@ -462,7 +631,7 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
         ConfigurationSection item = blackMarketConfig.getConfigurationSection("items." + itemKey);
         int cost = item.getInt("cost", 100);
         if (getSouls(player) < cost) {
-            player.sendMessage(MINI_MESSAGE.deserialize("<red>You need " + cost + " souls to buy this!"));
+            player.sendMessage(MINI_MESSAGE.deserialize("<red>You need <gold>" + cost + " souls</gold> to buy this!"));
             return;
         }
 
@@ -478,16 +647,17 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
                     player.sendMessage(MINI_MESSAGE.deserialize("<green>Effect unlocked and applied!"));
                 }
             }
-            // Add more actions (e.g., item give, ability unlock) as needed
         }
         saveShadowData();
         player.sendMessage(MINI_MESSAGE.deserialize("<green>Purchase completed!"));
     }
 
-    /** Updates the display name of an active shadow pet with MiniMessage. */
+    /** Updates the display name of an active shadow pet with MiniMessage, including tags. */
     private void updateShadowDisplayName(Shadow shadow) {
         if (shadow.activePet == null || !shadow.activePet.isValid()) return;
-        String displayName = shadow.title.isEmpty() ? "" : "<gold>[" + shadow.title + "] ";
+        String displayName = "";
+        if (!shadow.tag.isEmpty()) displayName += "<yellow>[" + shadow.tag + "] ";
+        if (!shadow.title.isEmpty()) displayName += "<gold>[" + shadow.title + "] ";
         displayName += shadow.customName.isEmpty() ? "<gray>" + shadow.type.name() + " Shadow" : shadow.customName;
         shadow.activePet.customName(MINI_MESSAGE.deserialize(displayName));
         shadow.activePet.setCustomNameVisible(true);
@@ -523,7 +693,7 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
         return item;
     }
 
-    /** Saves shadow data to shadowdata.yml. */
+    /** Saves shadow data to shadowdata.yml, including tags. */
     private void saveShadowData() {
         try {
             File file = new File(getDataFolder(), "shadowdata.yml");
@@ -536,12 +706,15 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
                     shadowSection.set("customName", shadow.customName);
                     shadowSection.set("title", shadow.title);
                     shadowSection.set("particleEffect", shadow.particleEffect);
+                    shadowSection.set("tag", shadow.tag);
                     shadowSection.set("kills", shadow.kills);
                     shadowSection.set("evolutionLevel", shadow.evolutionLevel);
                     shadowSection.set("evolutionPath", shadow.evolutionPath);
                     shadowSection.set("evolutionPoints", shadow.evolutionPoints);
                     ConfigurationSection unlocked = shadowSection.createSection("unlockedCustomizations");
                     shadow.unlockedCustomizations.forEach(unlocked::set);
+                    ConfigurationSection tags = shadowSection.createSection("unlockedTags");
+                    shadow.unlockedTags.forEach(tags::set);
                 }
             }
             data.save(file);
@@ -551,7 +724,7 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
         }
     }
 
-    /** Loads shadow data from shadowdata.yml. */
+    /** Loads shadow data from shadowdata.yml, including tags. */
     private void loadShadowData() {
         File file = new File(getDataFolder(), "shadowdata.yml");
         if (!file.exists()) return;
@@ -570,6 +743,7 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
                         shadow.customName = shadowSection.getString("customName", "");
                         shadow.title = shadowSection.getString("title", "");
                         shadow.particleEffect = shadowSection.getString("particleEffect", "");
+                        shadow.tag = shadowSection.getString("tag", "");
                         shadow.kills = shadowSection.getInt("kills", 0);
                         shadow.evolutionLevel = shadowSection.getString("evolutionLevel", "Basic");
                         shadow.evolutionPath = shadowSection.getString("evolutionPath", "");
@@ -578,6 +752,12 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
                         if (unlocked != null) {
                             for (String key : unlocked.getKeys(false)) {
                                 shadow.unlockedCustomizations.put(key, unlocked.getBoolean(key));
+                            }
+                        }
+                        ConfigurationSection tags = shadowSection.getConfigurationSection("unlockedTags");
+                        if (tags != null) {
+                            for (String key : tags.getKeys(false)) {
+                                shadow.unlockedTags.put(key, tags.getBoolean(key));
                             }
                         }
                         shadows.put(type, shadow);
@@ -602,8 +782,11 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
     /** Shows help for /shadow command with MiniMessage. */
     private void showShadowHelp(Player player) {
         player.sendMessage(MINI_MESSAGE.deserialize("<gold>=== Shadow Commands ==="));
+        player.sendMessage(MINI_MESSAGE.deserialize("<gold>/shadow summon <type> <white>- Summon a shadow"));
+        player.sendMessage(MINI_MESSAGE.deserialize("<gold>/shadow dismiss <white>- Dismiss active shadow"));
         player.sendMessage(MINI_MESSAGE.deserialize("<gold>/shadow customize <white>- Open customization menu"));
         player.sendMessage(MINI_MESSAGE.deserialize("<gold>/shadow rename <type> <name> <white>- Rename a shadow"));
+        player.sendMessage(MINI_MESSAGE.deserialize("<gold>/shadow tags <white>- Manage shadow tags"));
     }
 
     /** Displays the player's soul balance with MiniMessage. */
@@ -624,10 +807,10 @@ public class SoulsPlugin extends JavaPlugin implements Listener, CommandExecutor
                 return;
             }
             setSouls(player, currentSouls - amount);
-            player.sendMessage(MINI_MESSAGE.deserialize("<green>Withdrew " + amount + " souls!"));
+            player.sendMessage(MINI_MESSAGE.deserialize("<green>Withdrew <gold>" + amount + " souls</gold>!"));
         } else {
             setSouls(player, currentSouls + amount);
-            player.sendMessage(MINI_MESSAGE.deserialize("<green>Deposited " + amount + " souls!"));
+            player.sendMessage(MINI_MESSAGE.deserialize("<green>Deposited <gold>" + amount + " souls</gold>!"));
         }
     }
 
